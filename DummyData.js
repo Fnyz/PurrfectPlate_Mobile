@@ -1,0 +1,30 @@
+export const PetData = [
+    {
+        img:'https://i.natgeofe.com/n/4f5aaece-3300-41a4-b2a8-ed2708a0a27c/domestic-dog_thumb_square.jpg',
+        weight:35,
+        name:'Ashly',
+        gender:'Male',
+        Age:10,
+    },
+    {
+        img:'https://cdn-prod.medicalnewstoday.com/content/images/articles/322/322868/golden-retriever-puppy.jpg',
+        weight:20,
+        name:'Bugoy',
+        gender:'Male',
+        Age:11,
+    },
+    {
+        img:'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT-68BCIaW0Iiam8wgn9vWs3vcGMHtg1yMTBg&usqp=CAU',
+        weight:15,
+        name:'Mily',
+        gender:'Female',
+        Age:5,
+    },
+    {
+        img:'https://dogtime.com/wp-content/uploads/sites/12/2011/01/GettyImages-1491783566-e1689595181279.jpg',
+        weight:20,
+        name:'Angry',
+        gender:'Female',
+        Age:10,
+    },
+]
