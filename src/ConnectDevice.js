@@ -156,7 +156,7 @@ const ipData = [
         justifyContent:'center',
         alignItems:'center',
         borderRadius:5,
-      }} onPress={()=> navigation.navigate('Dashboard')}>
+      }} onPress={()=> navigation.navigate('Homepage')}>
         <Text
         style={{
           color:'white',

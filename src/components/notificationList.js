@@ -4,7 +4,7 @@ import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
-const NotificationList = ({name,image, message, weight, date}) => {
+const NotificationList = ({name,image, message, weight, date, navigation}) => {
     
   return (
     <>
@@ -105,7 +105,14 @@ const NotificationList = ({name,image, message, weight, date}) => {
         gap:10,
         opacity:0.9,
         elevation:1,
-    }}>
+    }} onPress={()=>navigation.navigate('DetailsPage',{
+      img:image,
+      weight:20,
+      gender:'male',
+      age:5,
+      name,
+      date
+    })}>
   <MaterialCommunityIcons name="view-list" size={24} color="white" />
         <Text style={{
             color:'white',

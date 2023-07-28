@@ -1,5 +1,5 @@
-import { View, Text, FlatList, Dimensions} from 'react-native'
-import React from 'react'
+import { View, Text, FlatList, Dimensions, TouchableOpacity} from 'react-native'
+import React, { useMemo, useState } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
@@ -9,7 +9,9 @@ import NotificationList from './components/notificationList';
 import { PetData } from '../DummyData';
 import PetList from './components/PetList';
 import Swiper from 'react-native-swiper'
-const { width } = Dimensions.get('window')
+import { useDrawerStatus } from '@react-navigation/drawer';
+import { useNavigation } from '@react-navigation/native';
+
 
 
 const petNotification = [
@@ -36,31 +38,49 @@ const petNotification = [
     }
 ]
 
-const DashBoard = () => {
+
+const DashBoard = ({navigation}) => {
+
+  const navigations = useNavigation();
+
+  console.log(navigations);
+  
+  const isDrawerOpen = useDrawerStatus() === 'open';
+  const handleOpenDrawer = () => {
+    navigation.openDrawer();
+  }
+  
+
+
   return (
-    <SafeAreaView>
+    <SafeAreaView style={{
+      flex:1,
+      position:'relative'
+    }}>
       <View
       style={{
         marginHorizontal:15,
-        marginTop:5,
+        paddingTop:15,
       }}
       >
-      <Ionicons name="md-menu" size={30} color="black" 
-      style={{
-        alignSelf:'flex-end',
-        opacity:0.7,
-      }}
-      />
-       <View style={{
+        <View>
+     
+        </View>
+        <View style={{
+          justifyContent:'space-between',
+          flexDirection:'row',
+        }}>
+        <View style={{
         flexDirection:'row',
         alignItems:'center',
         gap:10,
+       
       }}>
     <View style={{
-        borderWidth:1,
         borderRadius:50,
         padding:2,
-        borderColor:'#FAB1A0'
+        borderColor:'#FAB1A0',
+        borderWidth:1,
     }}>
     <Image
         style={{
@@ -82,7 +102,8 @@ const DashBoard = () => {
         <View style={{
             flexDirection:'row',
             alignItems:'center',
-            gap:5
+            gap:5,
+           
         }}>
         <Text style={{
             fontWeight:'bold',
@@ -90,9 +111,52 @@ const DashBoard = () => {
             opacity:0.7
         }}>KIRITIAN</Text>
         <MaterialCommunityIcons name="hand-wave" size={24} color="#FAB1A0" />
+   
         </View>
+        
       </View>
+      
       </View>
+      <View>
+
+      </View>
+      <View style={{
+        paddingTop:7,
+      }}>
+        <TouchableOpacity onPress={()=> 
+        handleOpenDrawer()
+       
+        }>
+        {isDrawerOpen ? (
+          <Ionicons name="close" size={30} color="black"  style={{
+            opacity:0.7,
+            backgroundColor:'white',
+            borderRadius:50,
+            width:40,
+            height:40,
+            paddingLeft:5,
+            paddingTop:3,
+            elevation:3,
+          }} />
+        ): (
+          <Ionicons name="md-menu" size={30} color="black" 
+          style={{
+          opacity:0.7,
+          backgroundColor:'white',
+          borderRadius:50,
+          width:40,
+          height:40,
+          paddingLeft:5,
+          paddingTop:3,
+          elevation:3,
+        }}
+        />
+        )}
+        </TouchableOpacity>
+      
+      </View>
+        </View>
+     
       <Searchbar
       placeholder="Search"
       style={{
@@ -154,7 +218,7 @@ const DashBoard = () => {
                     position:'relative',
                     elevation:1
                 }} key={i}>
-                    <NotificationList {...item}/>
+                    <NotificationList {...item} navigation={navigation}/>
                     <View
                     style={{
                        
@@ -210,13 +274,13 @@ const DashBoard = () => {
         }}>See all</Text>
     </View>
        <View style={{
-       height:310,
+       height:330,
        }}>
        <FlatList
         data={PetData}
         renderItem={({item})=> {
            return (
-            <PetList {...item}/>
+            <PetList {...item} navigation={navigation}/>
            )
         }}
         numColumns={2}

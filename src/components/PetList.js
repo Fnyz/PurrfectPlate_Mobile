@@ -3,7 +3,7 @@ import React from 'react'
 import { Image } from 'expo-image';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
-const PetList = ({img,name, weight, gender, Age}) => {
+const PetList = ({img,name, weight, gender, Age, navigation}) => {
   return (
     <View style={{
         borderRadius:2,
@@ -80,7 +80,14 @@ const PetList = ({img,name, weight, gender, Age}) => {
         alignItems:'center',
         borderBottomRightRadius:5,
         opacity:0.7,
-      }}>
+      }} onPress={()=>navigation.navigate('DetailsPage',{
+        img,
+        weight,
+        gender,
+        age:Age,
+        name,
+        date:'Today at 5 hours ago.'
+      })}>
       <MaterialCommunityIcons name="view-list" size={45} color="white" />
       </TouchableOpacity>
       </View>
