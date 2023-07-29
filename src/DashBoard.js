@@ -10,7 +10,7 @@ import { PetData } from '../DummyData';
 import PetList from './components/PetList';
 import Swiper from 'react-native-swiper'
 import { useDrawerStatus } from '@react-navigation/drawer';
-import { useNavigation } from '@react-navigation/native';
+
 
 
 
@@ -41,9 +41,7 @@ const petNotification = [
 
 const DashBoard = ({navigation}) => {
 
-  const navigations = useNavigation();
-
-  console.log(navigations);
+ 
   
   const isDrawerOpen = useDrawerStatus() === 'open';
   const handleOpenDrawer = () => {

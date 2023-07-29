@@ -1,14 +1,25 @@
 import { View, Text, ImageBackground , TouchableOpacity} from 'react-native'
-import React from 'react'
+import React, { useCallback } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Avatar } from 'react-native-paper';
 import { TextInput } from 'react-native-paper';
 import { AntDesign } from '@expo/vector-icons';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { Ionicons } from '@expo/vector-icons';
+import { Feather } from '@expo/vector-icons';
+import { FontAwesome } from '@expo/vector-icons';
+import { useDrawerStatus } from '@react-navigation/drawer';
 
 
-const AddPets= () => {
+const AddPets= ({navigation}) => {
+
+  
+  
+  const isDrawerOpen = useDrawerStatus() === 'open';
+  const handleOpenDrawer = useCallback(() => {
+    navigation.openDrawer();
+  },[navigation])
+  
  
   return (
     <SafeAreaView>
@@ -20,14 +31,39 @@ const AddPets= () => {
       }}
       >
 
+
         <View style={{
           padding:10,
         }}>
+
+
+<View style={{
+  padding:2,
+  borderRadius:40,
+  alignSelf:'flex-end',
+  marginRight:5,
+  width:40,
+  height:40,
+  justifyContent:'center',
+  alignItems:'center',
+  elevation:3,
+  backgroundColor:'white'
+}}>
+  <TouchableOpacity onPress={handleOpenDrawer}>
+    {isDrawerOpen ? (
+      <Ionicons name="close" size={20} color="black" />
+    ): (
+<FontAwesome name="bars" size={20} color="black" 
+/>
+    )}
+  </TouchableOpacity>
+</View>
 
         <View style={{
       gap:10,
       justifyContent:'center',
       alignItems:'center',
+      marginTop:30,
 
     }}>
 <Avatar.Image size={130} source={require('../assets/Image/dog.png')}
@@ -152,21 +188,51 @@ const AddPets= () => {
 
     <View style={{
       marginTop:10,
+      flexDirection:'row',
+      gap:10,
+      justifyContent:'center'
     }}>
       <TouchableOpacity style={{
         
-        width:'50%',
+        width:'45%',
         padding:15,
         justifyContent:'center',
         alignItems:'center',
         borderRadius:5,
         borderColor:'#FAB1A0',
         elevation:3,
-        backgroundColor:'white'
-      }}>
+        flexDirection:'row',
+        backgroundColor:'white',
+        gap:5
+      }}
+      
+      onPress={()=>   navigation.goBack()}
+      >
+      <Ionicons name="arrow-back" size={20} color="#FAB1A0" />
         <Text style={{
           color:'#FAB1A0',
+          fontSize:17,
+          fontWeight:'bold'
         }}>Go back</Text>
+      </TouchableOpacity>
+      <TouchableOpacity style={{
+        
+        width:'45%',
+        padding:15,
+        justifyContent:'center',
+        alignItems:'center',
+        borderRadius:5,
+        backgroundColor:'#FAB1A0',
+        elevation:3,
+        flexDirection:'row',
+        gap:5,
+      }}>
+        <Feather name="plus" size={20} color="white" />
+        <Text style={{
+          color:'white',
+          fontWeight:'bold',
+          fontSize:17,
+        }}>Add pet</Text>
       </TouchableOpacity>
     </View>
    
