@@ -1,10 +1,52 @@
 import { View, Text, ImageBackground, TouchableOpacity, ScrollView} from 'react-native'
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons';
 import { TextInput } from 'react-native-paper';
+import { getAuth, signOut } from "firebase/auth";
+import app from './firebase';
+import WifiManager from "react-native-wifi-reborn";
+import { PermissionsAndroid } from 'react-native';
+
+
+
+
+const auth = getAuth(app);
 
 const ConnectDevice = ({navigation}) => {
+
+  
+
+  useEffect(() => {
+
+    
+
+    const b = async () => {
+
+      const granted = await PermissionsAndroid.request(
+        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+        {
+          title: 'Location permission is required for WiFi connections',
+          message:
+            'This app needs location permission as this is required  ' +
+            'to scan for wifi networks.',
+          buttonNegative: 'DENY',
+          buttonPositive: 'ALLOW',
+        },
+  );
+  if (granted === PermissionsAndroid.RESULTS.GRANTED) {
+    const enabled = await WifiManager.isEnabled();
+    console.log(enabled)
+  } else {
+      // Permission denied
+  }
+      
+    }
+
+    b();
+    
+    
+  }, []);
 
     const [secureEntry, setSecureEntry] = useState(true);
 
@@ -32,7 +74,15 @@ const ipData = [
          paddingHorizontal:15,
        }}
       >
-        <TouchableOpacity onPress={()=> navigation.goBack()}>
+        <TouchableOpacity onPress={()=> {
+            signOut(auth).then(() => {
+              navigation.replace('LoginSignUp',{
+                change:false
+              } )
+            }).catch((error) => {
+              console.log('there was an error');
+            });
+        }}>
       <Ionicons name="md-log-out" size={27} color="black" style={{
         alignSelf:'flex-end',
         marginTop:15,
