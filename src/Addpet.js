@@ -1,5 +1,5 @@
 import { View, Text, ImageBackground , TouchableOpacity} from 'react-native'
-import React, { useCallback } from 'react'
+import React, { useCallback, useState } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Avatar } from 'react-native-paper';
 import { TextInput } from 'react-native-paper';
@@ -9,10 +9,108 @@ import { Ionicons } from '@expo/vector-icons';
 import { Feather } from '@expo/vector-icons';
 import { FontAwesome } from '@expo/vector-icons';
 import { useDrawerStatus } from '@react-navigation/drawer';
+import * as ImagePicker from 'expo-image-picker';
+import { collection, addDoc, getFirestore } from "firebase/firestore";
+import app from './firebase';
 
+
+function generateFakePassword(length) {
+  const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let password = '';
+  for (let i = 0; i < length; i++) {
+    const randomIndex = Math.floor(Math.random() * charset.length);
+    password += charset[randomIndex];
+  }
+  return password;
+}
+
+
+function generateFakeWeight(min, max) {
+  const fakeWeight = (Math.random() * (max - min) + min).toFixed(2); // Generates a random weight between min and max with 2 decimal places
+  return `${fakeWeight} kg`;
+}
+
+
+const db = getFirestore(app)
 
 const AddPets= ({navigation}) => {
 
+
+  const[petName, setPetname] = useState('');
+  const[Gender, setGender] = useState('');
+  const[Rfid, setRfid] = useState('');
+  const[Weight, setWeight] = useState('');
+  const[GoalWeight, setSetGoalWeight] = useState('');
+  const[Age, setAge] = useState('');
+  const [image, setImage] = useState(null);
+
+  pickImage = async () => {
+    let result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.All,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 1,
+      });
+  
+      if(result.canceled){
+        return null;
+      }
+      if (!result.canceled) {
+       setImage(result.assets[0].uri)
+      }
+};
+
+
+  
+
+
+  handleFakeRFID = () => {
+
+    setTimeout(() => {
+
+      const fakePassword = generateFakePassword(8);
+      setRfid(fakePassword)
+    }, 3000);
+
+  }
+
+  handleFakeWeight = () => {
+
+    setTimeout(() => {
+      const fakeWeight = generateFakeWeight(15, 25);
+      setWeight(fakeWeight)
+    }, 3000);
+
+  }
+
+  handleSubmit = async () => {
+
+    addDoc(collection(db, "List_of_Pets"), {
+      Petname:petName,
+      Gender:Gender,
+      RFID:Rfid,
+      Weight,
+      GoalWeight,
+      Age,
+      Image:image
+    }).then(()=>{
+      alert('Successfully added new pet!');
+      setPetname('')
+      setGender('')
+      setRfid('')
+      setWeight('')
+      setSetGoalWeight('')
+      setAge('')
+      setImage('');
+    })
+    
+
+  }
+
+  
+
+ 
+  
   
   
   const isDrawerOpen = useDrawerStatus() === 'open';
@@ -66,7 +164,7 @@ const AddPets= ({navigation}) => {
       marginTop:30,
 
     }}>
-<Avatar.Image size={130} source={require('../assets/Image/dog.png')}
+<Avatar.Image size={130} source={!image ? require('../assets/Image/dog.png') : {uri: image}}
        />
        <TouchableOpacity style={{
         flexDirection:'row',
@@ -79,7 +177,7 @@ const AddPets= ({navigation}) => {
         borderColor:'#FAB1A0',
         elevation:1,
         backgroundColor:'white',
-       }}>
+       }} onPress={pickImage}>
        <AntDesign name="cloudupload" size={24} color="#FAB1A0" />
         <Text style={{
           color:'#FAB1A0'
@@ -96,11 +194,15 @@ const AddPets= ({navigation}) => {
       label="Pet name"
       mode='outlined'
       activeOutlineColor='coral'
+      value={petName}
+      onChangeText={(val)=> setPetname(val)}
     />
     <TextInput
       label="Gender"
       mode='outlined'
       activeOutlineColor='coral'
+      value={Gender}
+      onChangeText={(val)=> setGender(val)}
     />
 
     <View style={{
@@ -114,9 +216,11 @@ const AddPets= ({navigation}) => {
       label="RFID"
       mode='outlined'
       activeOutlineColor='coral'
+      value={Rfid}
       style={{
         width:220,
       }}
+      disabled
     />
     <TouchableOpacity style={{
       elevation:5,
@@ -129,7 +233,7 @@ const AddPets= ({navigation}) => {
       flexDirection:'row',
       gap:10,
       backgroundColor:'#FAB1A0'
-    }}>
+    }} onPress={handleFakeRFID}>
       <AntDesign name="scan1" size={20} color="white" />
       <Text style={{
         color:'white',
@@ -154,6 +258,8 @@ const AddPets= ({navigation}) => {
         width:220,
       }}
       
+      value={Weight}
+      onChangeText={(val) => setWeight(val)} 
     />
     <TouchableOpacity style={{
       elevation:5,
@@ -166,7 +272,7 @@ const AddPets= ({navigation}) => {
       borderRadius:5,
       flexDirection:'row',
       gap:10,
-    }}>
+    }} onPress={handleFakeWeight}>
      <FontAwesome5 name="weight" size={20} color="white" />
       <Text style={{
         color:'white',
@@ -179,11 +285,16 @@ const AddPets= ({navigation}) => {
       label="Goal Weight"
       mode='outlined'
       activeOutlineColor='coral'
+      value={GoalWeight}
+      onChangeText={(val) => setSetGoalWeight(val)} 
+
     />
      <TextInput
       label="Age"
       mode='outlined'
       activeOutlineColor='coral'
+      value={Age}
+      onChangeText={(val) => setAge(val)} 
     />
 
     <View style={{
@@ -226,7 +337,7 @@ const AddPets= ({navigation}) => {
         elevation:3,
         flexDirection:'row',
         gap:5,
-      }}>
+      }} onPress={handleSubmit}>
         <Feather name="plus" size={20} color="white" />
         <Text style={{
           color:'white',

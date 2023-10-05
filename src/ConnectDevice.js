@@ -5,48 +5,123 @@ import { Ionicons } from '@expo/vector-icons';
 import { TextInput } from 'react-native-paper';
 import { getAuth, signOut } from "firebase/auth";
 import app from './firebase';
-import WifiManager from "react-native-wifi-reborn";
-import { PermissionsAndroid } from 'react-native';
+import {collection, getFirestore, getDocs } from 'firebase/firestore';
+import { ALERT_TYPE, Dialog, AlertNotificationRoot } from 'react-native-alert-notification';
+
+
+
 
 
 
 
 const auth = getAuth(app);
+const db = getFirestore(app)
 
-const ConnectDevice = ({navigation}) => {
+const ConnectDevice = ({navigation, route : {params}}) => {
 
-  
 
-  useEffect(() => {
+  const [deviceName, setDeviceName] = useState('');
+  const [password, setPassword] = useState('');
 
-    
 
-    const b = async () => {
 
-      const granted = await PermissionsAndroid.request(
-        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-        {
-          title: 'Location permission is required for WiFi connections',
-          message:
-            'This app needs location permission as this is required  ' +
-            'to scan for wifi networks.',
-          buttonNegative: 'DENY',
-          buttonPositive: 'ALLOW',
-        },
-  );
-  if (granted === PermissionsAndroid.RESULTS.GRANTED) {
-    const enabled = await WifiManager.isEnabled();
-    console.log(enabled)
-  } else {
-      // Permission denied
-  }
-      
+   handleSetDoc = async () => {
+
+   
+
+    const credentials = {
+      DeviceName: deviceName,
+      password: password,
+      email:params.email,
+      userId:params.id,
     }
 
-    b();
+    try {
+
+      if(!deviceName || !password){
+        Dialog.show({
+          type: ALERT_TYPE.DANGER,
+          title: 'Oppps.',
+          textBody: 'Please input all fields!',
+          button: 'close',
+        })
+  
+       return;
+      }
+
+      if(password.length < 4) {
+        setPassword('');
+        Dialog.show({
+          type: ALERT_TYPE.DANGER,
+          title: 'Oppps.',
+          textBody: 'Password must be at least 6 characters long!',
+          button: 'close',
+        })
+        return;
+      }
+
+      const querySnapshot = await getDocs(collection(db, "Device_Authorization"));
+     querySnapshot.forEach((doc) => {
+  
+     
+
+      const {email, DeviceName, password: pass } = doc.data();
+
+      if(password !== pass) {
+        Dialog.show({
+          type: ALERT_TYPE.DANGER,
+          title: 'Oppps.',
+          textBody: 'Password is incorrect, please try again.',
+          button: 'close',
+        })
+        setPassword('');
+        return;
+      }
+
+
+      if(email.toLowerCase().trim() !== credentials.email.toLowerCase().trim() || DeviceName.toLowerCase().trim() !==  deviceName.toLowerCase().trim()) {
+        Dialog.show({
+          type: ALERT_TYPE.DANGER,
+          title: 'Oppps.',
+          textBody: 'Device not registered!',
+          button: 'close',
+        })
+
+      }
+
+
+
+      if(email.toLowerCase().trim() === credentials.email.toLowerCase().trim() && DeviceName.toLowerCase().trim() ===  deviceName.toLowerCase().trim()) {
+        navigation.replace('Homepage',
+        {
+          screen: 'Dashboard',
+          params: { credentials },
+        }
+        );
+      }
+
+      
+});
+
+
+
+
+      
+    } catch (error) {
+      
+    }
     
+
     
-  }, []);
+
+
+
+   
+   }
+
+
+
+  
 
     const [secureEntry, setSecureEntry] = useState(true);
 
@@ -66,22 +141,24 @@ const ipData = [
 
 
   return (
+    <AlertNotificationRoot theme='dark'>
+
     <SafeAreaView>
       <ImageBackground 
        source={require('../assets/Image/FirstPage.png')} 
        style={{
          height:'100%',
          paddingHorizontal:15,
-       }}
-      >
+        }}
+        >
         <TouchableOpacity onPress={()=> {
-            signOut(auth).then(() => {
-              navigation.replace('LoginSignUp',{
-                change:false
-              } )
-            }).catch((error) => {
-              console.log('there was an error');
-            });
+          signOut(auth).then(() => {
+            navigation.replace('LoginSignUp',{
+              change:false
+            } )
+          }).catch((error) => {
+            console.log('there was an error');
+          });
         }}>
       <Ionicons name="md-log-out" size={27} color="black" style={{
         alignSelf:'flex-end',
@@ -90,73 +167,73 @@ const ipData = [
       }} />
         </TouchableOpacity>
         <View style={{
-            marginTop:30,
+          marginTop:30,
         }}>
             <Text style={{
-                fontWeight:'bold',
-                fontSize:25,
+              fontWeight:'bold',
+              fontSize:25,
             }}>
             Connect Via Wifi
             </Text>
             <Text style={{
-                opacity:0.5
+              opacity:0.5
             }}>
             Please choose to connect device
             </Text>
         </View>
         <View style={{
-            height:200,
-            marginTop:15,
+          height:200,
+          marginTop:15,
         }}>
             <ScrollView>
                 {ipData.map((d,i)=> {
-                   return (
+                  return (
                     <View key={i} style={{
-                        marginTop:10,
-                        flexDirection:'row',
-                        justifyContent:'space-between'
+                      marginTop:10,
+                      flexDirection:'row',
+                      justifyContent:'space-between'
                     }}>
                         <View style={{
-                            flexDirection:'row',
-                            justifyContent:'center',
-                            alignItems:'center',
-                            gap:10,
+                          flexDirection:'row',
+                          justifyContent:'center',
+                          alignItems:'center',
+                          gap:10,
                         }}>
                         <View style={{
-                            borderRadius:50,
-                            width:50,
-                            height:50,
-                            justifyContent:'center',
-                            alignItems:'center',
-                            backgroundColor:'#FAB1A0'
+                          borderRadius:50,
+                          width:50,
+                          height:50,
+                          justifyContent:'center',
+                          alignItems:'center',
+                          backgroundColor:'#FAB1A0'
                         }}>
                             <Text style={{
-                                color:'white',
-                                fontSize:20,
+                              color:'white',
+                              fontSize:20,
                             }}>IP</Text>
                         </View>
                         <Text style={{
-                            fontSize:16,
-                            opacity:0.7
+                          fontSize:16,
+                          opacity:0.7
                         }}>/ {d.ip}</Text>
                         </View>
 
-                        <TouchableOpacity>
+                        <TouchableOpacity >
                         <View style={{
-                            width:105,
-                            flexDirection:'row',
-                            justifyContent:'center',
+                          width:105,
+                          flexDirection:'row',
+                          justifyContent:'center',
                             alignItems:'center',
                             height:40,
                             borderRadius:10,
                             backgroundColor:'#6750A4',
                             gap:7,
                             opacity:0.9
-                        }}>
+                          }}>
                             <Ionicons name="send" size={18} color="white" />
                             <Text style={{
-                                color:'white',
-                                fontSize:13,
+                              color:'white',
+                              fontSize:13,
                             }}>Connect</Text>
                         </View>
                         </TouchableOpacity>
@@ -166,47 +243,51 @@ const ipData = [
             </ScrollView>
         </View>
         <View style={{
-            marginTop:15,
+          marginTop:15,
         }}>
             <Text style={{
-                 fontWeight:'bold',
-                 fontSize:25,
+              fontWeight:'bold',
+              fontSize:25,
             }}>Connect Via Device</Text>
             <Text style={{
-               opacity:0.5
+              opacity:0.5
             }}>Please input fields to connect</Text>
         <View style={{
             marginTop:10,
             gap:5,
-        }}>
+          }}>
 
       <TextInput
       label="Device name"
       mode='outlined'
       activeOutlineColor='coral'
+      value={deviceName}
+      onChangeText={(val) =>  setDeviceName(val)}
       style={{
         opacity:0.8
       }}
-    />
+      />
      <TextInput
       label="Password"
       mode='outlined'
       activeOutlineColor='coral'
       secureTextEntry={secureEntry}
+      value={password}
+      onChangeText={(val) =>  setPassword(val)}
       right={<TextInput.Icon icon={!secureEntry? 'eye':'eye-off'} onPress={handleChangeOpenPassword} />}
       style={{
         marginBottom:10,
         opacity:0.8
       }}
-
-    />
+      
+      />
     <TouchableOpacity style={{
-        height:50,
+      height:50,
         backgroundColor:'#FAB1A0',
         justifyContent:'center',
         alignItems:'center',
         borderRadius:5,
-      }} onPress={()=> navigation.navigate('Homepage')}>
+      }} onPress={handleSetDoc}>
         <Text
         style={{
           color:'white',
@@ -219,6 +300,7 @@ const ipData = [
         </View>
       </ImageBackground>
     </SafeAreaView>
+        </AlertNotificationRoot>
   )
 }
 

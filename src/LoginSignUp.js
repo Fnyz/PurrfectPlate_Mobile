@@ -233,12 +233,15 @@ const LoginSignUp = ({route, navigation}) => {
         setVisible1(true)
         return;
       }
+
+      
  
 
       const profile = {
         email: user.email,
         id: user.uid,
         deviceId: deviceId,
+       
       }
       setVisible(false);
       setEmail('')

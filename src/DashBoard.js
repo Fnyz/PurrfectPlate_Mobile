@@ -1,5 +1,5 @@
 import { View, Text, FlatList, Dimensions, TouchableOpacity} from 'react-native'
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
@@ -10,9 +10,12 @@ import { PetData } from '../DummyData';
 import PetList from './components/PetList';
 import Swiper from 'react-native-swiper'
 import { useDrawerStatus } from '@react-navigation/drawer';
+import { doc, getDoc, getFirestore } from "firebase/firestore";
+import app from './firebase';
 
 
 
+const db = getFirestore(app);
 
 const petNotification = [
     {
@@ -39,14 +42,31 @@ const petNotification = [
 ]
 
 
-const DashBoard = ({navigation}) => {
+const DashBoard = ({navigation,route: {params: { credentials }}}) => {
 
- 
-  
+  const [profile, setProfileData] = useState({});
   const isDrawerOpen = useDrawerStatus() === 'open';
   const handleOpenDrawer = () => {
     navigation.openDrawer();
   }
+
+  getUserProfile = async () => {
+
+    const docRef = doc(db, "users", credentials.userId);
+  const docSnap = await getDoc(docRef);
+
+if (docSnap.exists()) {
+  setProfileData(docSnap.data());
+} else {
+  
+  console.log("No such document!");
+}
+  }
+
+  useEffect(()=>{
+    getUserProfile();
+  },[])
+
   
 
 
@@ -107,7 +127,7 @@ const DashBoard = ({navigation}) => {
             fontWeight:'bold',
             fontSize:30,
             opacity:0.7
-        }}>KIRITIAN</Text>
+        }}>{profile.username}</Text>
         <MaterialCommunityIcons name="hand-wave" size={24} color="#FAB1A0" />
    
         </View>
