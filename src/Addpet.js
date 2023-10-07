@@ -1,5 +1,5 @@
-import { View, Text, ImageBackground , TouchableOpacity, ActivityIndicator} from 'react-native'
-import React, { useCallback, useState } from 'react'
+import { View, Text, ImageBackground , TouchableOpacity, ActivityIndicator, ScrollView} from 'react-native'
+import React, { useCallback, useEffect, useState } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Avatar } from 'react-native-paper';
 import { TextInput } from 'react-native-paper';
@@ -10,11 +10,148 @@ import { Feather } from '@expo/vector-icons';
 import { FontAwesome } from '@expo/vector-icons';
 import { useDrawerStatus } from '@react-navigation/drawer';
 import * as ImagePicker from 'expo-image-picker';
-import { collection, addDoc, getFirestore, getDocs,where, query, onSnapshot } from "firebase/firestore";
+import { collection, addDoc, getFirestore, query, onSnapshot } from "firebase/firestore";
 import app from './firebase';
 import Modal from "react-native-modal";
 import {Image} from 'expo-image'
-import { ALERT_TYPE, Dialog, AlertNotificationRoot } from 'react-native-alert-notification';
+import {  AlertNotificationRoot, ALERT_TYPE, Dialog } from 'react-native-alert-notification';
+import {useForm, Controller} from 'react-hook-form';
+import DropDownPicker from "react-native-dropdown-picker";
+import { petsData } from '../animeData';
+
+
+const Box = React.memo(({Cat, Dog, image, handleCloseModal, pickImage, handlePickImage, click, handleSave}) => {
+  
+  
+  return (
+    <View style={{
+      backgroundColor:'rgba(0,0,0,0.8)',
+      height:400,
+      padding:15,
+    }}>
+      <View style={{
+        flexDirection:'row',
+        justifyContent:'space-between',
+        alignItems:'center'
+      }}>
+      <Text style={{
+        color:'white',
+        fontWeight:'bold',
+        marginTop:5,
+      }}><Text style={{
+        color:'coral',
+        fontWeight:'bold',
+        fontSize:20,
+      }}>|</Text> Choose your favorite image</Text>
+      {click && (
+        <TouchableOpacity onPress={handleSave}>
+        <Text style={{
+          color:'coral',
+          fontWeight:'bold',
+          marginRight:10,
+          paddingTop:10,
+        }}>SAVE</Text>
+        </TouchableOpacity>
+      )}
+  
+      </View>
+    
+      <View style={{
+        marginTop:15,
+      }}>
+        <Text style={{
+          color:'white',
+          opacity:0.8,
+          marginBottom:10,
+        }}>Dog</Text>
+        <ScrollView horizontal={true}>
+          {Dog.map((item, i)=> {
+            return (
+             <TouchableOpacity key={item.id} style={{
+              marginRight:10,
+             }} onPress={()=> handlePickImage(item.image)}>
+          <View style={{
+            borderWidth:image === item.image ? 1 : null,
+            borderColor:image === item.image ? 'coral': null,
+            padding:2,
+            borderRadius:50,
+          }}>
+          <Image
+        style={{ width: 70, height: 70, resizeMode:'cover', borderRadius:50}}
+        source= {{uri:item.image}}
+        contentFit="cover"
+        transition={1000}
+      />
+          </View>
+         
+             </TouchableOpacity>
+             
+            )
+          })}
+        </ScrollView>
+
+        <Text style={{
+          color:'white',
+          opacity:0.8,
+          marginBottom:10,
+          marginTop:15,
+        }}>Cat</Text>
+        <ScrollView horizontal={true}>
+          {Cat.map((item, i)=> {
+            return (
+             
+             <TouchableOpacity key={item.id} style={{
+              marginRight:10,
+             }} onPress={()=> handlePickImage(item.image)} >
+               <View style={{
+                borderWidth:image === item.image ? 1 : null,
+                borderColor:image === item.image ? 'coral': null,
+                padding:2,
+                borderRadius:50,
+              }}>
+          <Image
+        style={{ width: 70, height: 70, resizeMode:'cover', borderRadius:50}}
+        source= {{uri:item.image}}
+        contentFit="cover"
+        transition={1000}
+      />
+        </View>
+             </TouchableOpacity>
+           
+            )
+          })}
+        </ScrollView>
+
+  
+        <TouchableOpacity style={{
+         borderWidth:1,
+         marginTop:20,
+         borderColor:'coral',
+         paddingVertical:15,
+         justifyContent:'center',
+         alignItems:'center',
+         borderRadius:5,
+        }} onPress={pickImage}>
+          <Text style={{
+            color:'coral',
+          }}>Choose image from gallery</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={()=> handleCloseModal()}>
+          <Text style={{
+            color:'white',
+            textAlign:'center',
+            marginTop:15,
+            opacity:0.6,
+            fontWeight:'bold'
+          }}>Skip from now</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  )
+})
+
+
+
 
 
 function generateFakePassword(length) {
@@ -30,7 +167,7 @@ function generateFakePassword(length) {
 
 function generateFakeWeight(min, max) {
   const fakeWeight = (Math.random() * (max - min) + min).toFixed(2); // Generates a random weight between min and max with 2 decimal places
-  return `${fakeWeight}`;
+  return `${fakeWeight} kg`;
 }
 
 
@@ -39,14 +176,84 @@ const db = getFirestore(app)
 const AddPets= ({navigation}) => {
 
 
+  const [catData, setCatData] = useState([]);
+  const [dogData, setDogData] = useState([]);
   const[petName, setPetname] = useState('');
   const[Gender, setGender] = useState('');
+  const[click, setClick] = useState(false);
   const[Rfid, setRfid] = useState('');
   const[Weight, setWeight] = useState('');
   const[GoalWeight, setSetGoalWeight] = useState('');
   const[Age, setAge] = useState('');
   const [image, setImage] = useState(null);
   const [show, setShow] = useState(false);
+  const [datas, setAllData] = useState([]);
+  const [genderOpen, setGenderOpen] = useState(false);
+  const [gender, setGenders] = useState([
+    { label: "Male", value: "male" },
+    { label: "Female", value: "female" },
+    { label: "Prefer Not to Say", value: "neutral" },
+  ]);
+
+  const [visible, setVisible] = useState(false);
+
+
+
+  const [loadingRf, setLoad1] = useState(false);
+  const [loadingWth, setLoad2] = useState(false);
+
+
+
+
+  
+
+  const getAllDatas = () => {
+    const q = query(collection(db, "List_of_Pets"));
+   onSnapshot(q, (querySnapshot) => {
+  const dt = [];
+  querySnapshot.forEach((doc) => {
+      dt.push(doc.data());
+  });
+
+  setAllData(dt);
+ 
+});
+
+  }
+
+  useEffect(()=>{
+    getAllDatas();
+  },[])
+
+  useEffect(()=>{
+    const Dog = petsData.filter(item => item.category === 'Dog');
+    const Cat = petsData.filter(item => item.category === 'Cat');
+
+    setDogData(Dog);
+    setCatData(Cat);
+  },[])
+  
+  
+
+
+  
+  handleShowModal=()=>{
+    setVisible(true);
+  }
+
+  handleCloseModal=()=>{
+    setVisible(false);
+  }
+
+  handlePickImage = (url) => {
+   setImage(url);
+   setClick(true);
+  }
+
+  handleSave = () => {
+    setClick(false);
+    setVisible(false);
+  }
   
 
   pickImage = async () => {
@@ -70,18 +277,20 @@ const AddPets= ({navigation}) => {
 
 
   handleFakeRFID = () => {
+    setLoad1(true);
 
     setTimeout(() => {
-
-      const fakePassword = generateFakePassword(8);
+      setLoad1(false);
+      const fakePassword = generateFakePassword(20);
       setRfid(fakePassword)
     }, 3000);
 
   }
 
   handleFakeWeight = () => {
-
+    setLoad2(true);
     setTimeout(() => {
+      setLoad2(false);
       const fakeWeight = generateFakeWeight(15, 25);
       setWeight(fakeWeight)
     }, 3000);
@@ -90,62 +299,75 @@ const AddPets= ({navigation}) => {
 
   handleSubmit = async () => {
 
-    //Add new pet here
+    
     setShow(true);
-   
-  const q = collection(db, "List_of_Pets");
-  onSnapshot(q, (querySnapshot) => {
-  const petList = [];
-  querySnapshot.forEach((doc) => {
-      petList.push(doc.data());
-  });
-  const result = petList.find(data => data.Petname === petName);
- 
-  //validate if it is exist or not.
-  if(result){
-    setShow(false);
-    Dialog.show({
-      type: ALERT_TYPE.ERROR,
-      title: 'Oppps.',
-      textBody: 'Pet is already EXIST.',
-      button: 'close',
-    })
-    setPetname('')
-  }else{
-     addDoc(q, {
-    Petname:petName,
-    Gender:Gender,
-    RFID:Rfid,
-    Weight,
-    GoalWeight,
-    Age,
-    Image:image
-  }).then(()=>{
-    setShow(false);
-    Dialog.show({
-      type: ALERT_TYPE.SUCCESS,
-      title: 'Success.',
-      textBody: 'Yeahy pet is successfully added.',
-      button: 'close',
-    })
-    setPetname('')
-    setGender('')
-    setRfid('')
-    setWeight('')
-    setSetGoalWeight('')
-    setAge('')
-    setImage('');  
-  })
-  }
-  
-});
+
+
+    if(!petName || !Gender || !Rfid || !Weight || !GoalWeight || !Age){
+      setShow(false)
+      Dialog.show({
+        type: ALERT_TYPE.DANGER,
+        title: 'Warning!',
+        textBody: 'Please input all fields.',
+        button: 'close',
+      })
+      return;
+    }
+
+     const res = datas.find(d => d?.Petname.toLowerCase().trim() === petName.toLowerCase().trim());
+    
+     if(!res){
+      const docRef = await addDoc(collection(db, "List_of_Pets"), {
+        Petname: petName,
+        Gender,
+        Rfid,
+        Weight,
+        GoalWeight,
+        Age,
+        image
+      });
+
+      if(docRef.id){
+        setShow(false);
+        setPetname('');
+        setGender('');
+        setSetGoalWeight('');
+        setAge('');
+        setRfid('');
+        Dialog.show({
+          type: ALERT_TYPE.SUCCESS,
+          title: 'SUCCESS',
+          textBody: 'Add pet successfully.',
+          button: 'close',
+        })
+      }
+      return;
+     }
+
+     if(res.Petname.toLowerCase().trim() === petName.toLowerCase().trim()){
+      setShow(false);
+      setPetname('');
+      Dialog.show({
+        type: ALERT_TYPE.DANGER,
+        title: 'Oppps.',
+        textBody: 'Pet is already exists.',
+        button: 'close',
+      })
+     }
+      
   }
 
   
 
  
-  
-  
+  const onGenderOpen = useCallback(() => {
+
+  }, []);
+
+
+  const { control } = useForm();
+ 
+
   
   const isDrawerOpen = useDrawerStatus() === 'open';
   const handleOpenDrawer = useCallback(() => {
@@ -213,11 +435,11 @@ const AddPets= ({navigation}) => {
         borderColor:'#FAB1A0',
         elevation:1,
         backgroundColor:'white',
-       }} onPress={pickImage}>
+       }} onPress={handleShowModal}>
        <AntDesign name="cloudupload" size={24} color="#FAB1A0" />
         <Text style={{
           color:'#FAB1A0'
-        }}>Choose Image</Text>
+        }}>Choose image</Text>
        </TouchableOpacity>
 
     </View>
@@ -231,15 +453,41 @@ const AddPets= ({navigation}) => {
       mode='outlined'
       activeOutlineColor='coral'
       value={petName}
+      style={{
+        opacity:0.7
+      }}
       onChangeText={(val)=> setPetname(val)}
     />
-    <TextInput
-      label="Gender"
-      mode='outlined'
-      activeOutlineColor='coral'
-      value={Gender}
-      onChangeText={(val)=> setGender(val)}
-    />
+
+     <Controller
+        name="gender"
+        defaultValue=""
+        control={control}
+        render={({ field: { onChange, value } }) => (
+          <View style={{ 
+            width: "100%",
+            marginTop:5,
+            }}>
+            <DropDownPicker
+              style={{borderColor: "#B7B7B7",
+              height: 50}}
+              open={genderOpen}
+              value={Gender} 
+              items={gender}
+              setOpen={setGenderOpen}
+              setValue={setGender}
+              placeholder="Select Gender"
+              placeholderStyle={{
+                color: "grey",
+              }}
+              onOpen={onGenderOpen}
+              onChangeValue={onChange}
+              zIndex={3000}
+              zIndexInverse={1000}
+            />
+          </View>
+        )}
+      />
 
     <View style={{
       flexDirection:'row',
@@ -270,11 +518,32 @@ const AddPets= ({navigation}) => {
       gap:10,
       backgroundColor:'#FAB1A0'
     }} onPress={handleFakeRFID}>
-      <AntDesign name="scan1" size={20} color="white" />
+
+     {loadingRf ? 
+      <>
+        <ActivityIndicator animating={true} color='white' size={20} style={{
+              opacity:0.8,
+              position:'relative',
+              left:0,
+            }}/>
+            <Text style={{
+              color:'white',
+              fontWeight:'bold',
+            }}>Please wait..</Text>
+      </>
+     : (
+              <>
+             <AntDesign name="scan1" size={20} color="white" />
       <Text style={{
         color:'white',
         fontWeight:'bold'
       }}>Set RFID</Text>
+              </>
+            
+            ) }
+
+
+     
     </TouchableOpacity>
 
     </View>
@@ -290,11 +559,13 @@ const AddPets= ({navigation}) => {
       label="Weight"
       mode='outlined'
       activeOutlineColor='coral'
-      style={{s
+      style={{
         width:220,
+        opacity:0.7
       }}
+
       
-      value={`${Weight} kg`}
+      value={`${Weight}`}
       onChangeText={(val) => setWeight(val)} 
     />
     <TouchableOpacity style={{
@@ -309,11 +580,29 @@ const AddPets= ({navigation}) => {
       flexDirection:'row',
       gap:10,
     }} onPress={handleFakeWeight}>
-     <FontAwesome5 name="weight" size={20} color="white" />
-      <Text style={{
-        color:'white',
-        fontWeight:'bold'
-      }}>Weight Pet</Text>
+      {loadingWth ? 
+      <>
+        <ActivityIndicator animating={true} color='white' size={20} style={{
+              opacity:0.8,
+              position:'relative',
+              left:0,
+            }}/>
+            <Text style={{
+              color:'white',
+              fontWeight:'bold',
+            }}>Please wait..</Text>
+      </>
+     : (
+              <>
+             <FontAwesome5 name="weight" size={20} color="white" />
+              <Text style={{
+                color:'white',
+                fontWeight:'bold'
+              }}>Weight Pet</Text>
+              </>
+            
+            ) }
+  
     </TouchableOpacity>
 
     </View>
@@ -321,6 +610,9 @@ const AddPets= ({navigation}) => {
       label="Goal Weight"
       mode='outlined'
       activeOutlineColor='coral'
+      style={{
+        opacity:0.7
+      }}
       value={GoalWeight}
       onChangeText={(val) => setSetGoalWeight(val)} 
 
@@ -330,6 +622,9 @@ const AddPets= ({navigation}) => {
       mode='outlined'
       activeOutlineColor='coral'
       value={Age}
+      style={{
+        opacity:0.7
+      }}
       onChangeText={(val) => setAge(val)} 
     />
 
@@ -387,7 +682,7 @@ const AddPets= ({navigation}) => {
 
         </View>
 
-        <Modal isVisible={false} animationIn='slideInLeft'>
+        <Modal isVisible={show} animationIn='slideInLeft'>
         <View style={{ height:70,
         borderColor:'red',
         marginHorizontal:20,
@@ -427,6 +722,21 @@ const AddPets= ({navigation}) => {
             }}>Add new pet .</Text>
         </View>
       </Modal>
+
+
+      
+      <Modal isVisible={visible} animationIn='slideInLeft' animationOut='fadeOut'>
+        <Box 
+        image={image}
+        handleCloseModal={handleCloseModal}
+        handlePickImage={handlePickImage}
+        pickImage={pickImage}
+        Dog={dogData}
+        Cat={catData}
+        handleSave={handleSave}
+        click={click}
+         />
+       </Modal>
     
 
       </ImageBackground>
