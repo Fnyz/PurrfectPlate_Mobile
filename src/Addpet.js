@@ -290,7 +290,7 @@ const AddPets= ({navigation}) => {
       label="Weight"
       mode='outlined'
       activeOutlineColor='coral'
-      style={{
+      style={{s
         width:220,
       }}
       
