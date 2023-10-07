@@ -57,8 +57,6 @@ const LoginSignUp = ({route, navigation}) => {
     signOut(auth).
     then(()=> {
       setVisible1(false);
-      email('')
-      password('')
     });
     
   }

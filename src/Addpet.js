@@ -1,4 +1,4 @@
-import { View, Text, ImageBackground , TouchableOpacity} from 'react-native'
+import { View, Text, ImageBackground , TouchableOpacity, ActivityIndicator} from 'react-native'
 import React, { useCallback, useState } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Avatar } from 'react-native-paper';
@@ -10,8 +10,11 @@ import { Feather } from '@expo/vector-icons';
 import { FontAwesome } from '@expo/vector-icons';
 import { useDrawerStatus } from '@react-navigation/drawer';
 import * as ImagePicker from 'expo-image-picker';
-import { collection, addDoc, getFirestore } from "firebase/firestore";
+import { collection, addDoc, getFirestore, getDocs,where, query, onSnapshot } from "firebase/firestore";
 import app from './firebase';
+import Modal from "react-native-modal";
+import {Image} from 'expo-image'
+import { ALERT_TYPE, Dialog, AlertNotificationRoot } from 'react-native-alert-notification';
 
 
 function generateFakePassword(length) {
@@ -27,7 +30,7 @@ function generateFakePassword(length) {
 
 function generateFakeWeight(min, max) {
   const fakeWeight = (Math.random() * (max - min) + min).toFixed(2); // Generates a random weight between min and max with 2 decimal places
-  return `${fakeWeight} kg`;
+  return `${fakeWeight}`;
 }
 
 
@@ -43,6 +46,8 @@ const AddPets= ({navigation}) => {
   const[GoalWeight, setSetGoalWeight] = useState('');
   const[Age, setAge] = useState('');
   const [image, setImage] = useState(null);
+  const [show, setShow] = useState(false);
+  
 
   pickImage = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
@@ -85,26 +90,55 @@ const AddPets= ({navigation}) => {
 
   handleSubmit = async () => {
 
-    addDoc(collection(db, "List_of_Pets"), {
-      Petname:petName,
-      Gender:Gender,
-      RFID:Rfid,
-      Weight,
-      GoalWeight,
-      Age,
-      Image:image
-    }).then(()=>{
-      alert('Successfully added new pet!');
-      setPetname('')
-      setGender('')
-      setRfid('')
-      setWeight('')
-      setSetGoalWeight('')
-      setAge('')
-      setImage('');
+    //Add new pet here
+    setShow(true);
+   
+  const q = collection(db, "List_of_Pets");
+  onSnapshot(q, (querySnapshot) => {
+  const petList = [];
+  querySnapshot.forEach((doc) => {
+      petList.push(doc.data());
+  });
+  const result = petList.find(data => data.Petname === petName);
+ 
+  //validate if it is exist or not.
+  if(result){
+    setShow(false);
+    Dialog.show({
+      type: ALERT_TYPE.ERROR,
+      title: 'Oppps.',
+      textBody: 'Pet is already EXIST.',
+      button: 'close',
     })
-    
-
+    setPetname('')
+  }else{
+     addDoc(q, {
+    Petname:petName,
+    Gender:Gender,
+    RFID:Rfid,
+    Weight,
+    GoalWeight,
+    Age,
+    Image:image
+  }).then(()=>{
+    setShow(false);
+    Dialog.show({
+      type: ALERT_TYPE.SUCCESS,
+      title: 'Success.',
+      textBody: 'Yeahy pet is successfully added.',
+      button: 'close',
+    })
+    setPetname('')
+    setGender('')
+    setRfid('')
+    setWeight('')
+    setSetGoalWeight('')
+    setAge('')
+    setImage('');  
+  })
+  }
+  
+});
   }
 
   
@@ -120,6 +154,8 @@ const AddPets= ({navigation}) => {
   
  
   return (
+    <AlertNotificationRoot theme='dark'>
+
     <SafeAreaView>
       <ImageBackground source={require('../assets/Image/FirstPage.png')}
       style={{
@@ -258,7 +294,7 @@ const AddPets= ({navigation}) => {
         width:220,
       }}
       
-      value={Weight}
+      value={`${Weight} kg`}
       onChangeText={(val) => setWeight(val)} 
     />
     <TouchableOpacity style={{
@@ -350,11 +386,53 @@ const AddPets= ({navigation}) => {
     </View>
 
         </View>
+
+        <Modal isVisible={false} animationIn='slideInLeft'>
+        <View style={{ height:70,
+        borderColor:'red',
+        marginHorizontal:20,
+        borderRadius:5,
+        flexDirection:'row',
+        justifyContent:'center',
+        alignItems:'center',
+        backgroundColor:'rgba(0,0,0,0.9)',
+        gap:5,
+        position:'relative'
+        }}>
+          <View style={{
+              position:'absolute',
+              zIndex:1,
+              right:10,
+              top:-98,
+
+            }}>
+             <Image source={require(`../assets/Doggy.png`)} style={{
+              width:115,
+              height:140,
+             }} />
+            </View>
+          <ActivityIndicator animating={true} color='coral' size={25} style={{
+              opacity:0.8,
+              position:'relative',
+              left:-10,
+            }}/>
+
+          <Text style={{
+              fontSize:22,
+              opacity:0.9,
+              position:'relative',
+              left:-5,
+              color:'white',
+              fontWeight:'bold',
+            }}>Add new pet .</Text>
+        </View>
+      </Modal>
     
 
       </ImageBackground>
       
     </SafeAreaView>
+    </AlertNotificationRoot>
   )
 }
 

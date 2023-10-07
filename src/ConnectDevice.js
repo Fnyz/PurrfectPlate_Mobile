@@ -1,4 +1,4 @@
-import { View, Text, ImageBackground, TouchableOpacity, ScrollView} from 'react-native'
+import { View, Text, ImageBackground, TouchableOpacity, ScrollView, Keyboard} from 'react-native'
 import React, { useEffect, useState } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons';
@@ -25,7 +25,10 @@ const ConnectDevice = ({navigation, route : {params}}) => {
 
 
 
-   handleSetDoc = async () => {
+   handleSubmitAuth = async () => {
+
+
+    Keyboard.dismiss();
 
    
 
@@ -287,7 +290,7 @@ const ipData = [
         justifyContent:'center',
         alignItems:'center',
         borderRadius:5,
-      }} onPress={handleSetDoc}>
+      }} onPress={handleSubmitAuth}>
         <Text
         style={{
           color:'white',
