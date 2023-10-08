@@ -334,6 +334,7 @@ const AddPets= ({navigation}) => {
         setSetGoalWeight('');
         setAge('');
         setRfid('');
+        setWeight('');
         Dialog.show({
           type: ALERT_TYPE.SUCCESS,
           title: 'SUCCESS',

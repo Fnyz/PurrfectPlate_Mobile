@@ -7,6 +7,7 @@ import { getAuth, signOut } from "firebase/auth";
 import app from './firebase';
 import {collection, getFirestore, getDocs } from 'firebase/firestore';
 import { ALERT_TYPE, Dialog, AlertNotificationRoot } from 'react-native-alert-notification';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 
 
@@ -95,12 +96,22 @@ const ConnectDevice = ({navigation, route : {params}}) => {
 
 
       if(email.toLowerCase().trim() === credentials.email.toLowerCase().trim() && DeviceName.toLowerCase().trim() ===  deviceName.toLowerCase().trim()) {
-        navigation.replace('Homepage',
+
+        const storeData = async () => {
+          try {
+            await AsyncStorage.setItem('DeviceName', DeviceName);
+            navigation.replace('Homepage',
         {
           screen: 'Dashboard',
           params: { credentials },
         }
         );
+          } catch (e) {
+            // saving error
+          }
+        };
+        storeData();
+        
       }
 
       
