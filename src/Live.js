@@ -12,8 +12,9 @@ import { useDrawerStatus } from '@react-navigation/drawer';
 import { Ionicons } from '@expo/vector-icons';
 import Modal from 'react-native-modal';
 import app from './firebase';
-import { getFirestore, collection, addDoc, query, where, onSnapshot, getDocs} from 'firebase/firestore';
+import { getFirestore, collection, addDoc, query, where, onSnapshot, getDocs,updateDoc, doc, deleteDoc} from 'firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { AppState } from 'react-native';
 
 
 
@@ -25,11 +26,15 @@ const Live = ({navigation}) => {
 
   const [recording, setRecording] = React.useState();
   const [visible, setVisible] = React.useState(false);
-  const [liveId, setLiveId] = React.useState('');
   const [load, setloading] = React.useState(false);
   const [youTubeId, setYoutubeId] = React.useState('');
   const [prompt, setPrompt] = React.useState(false);
-
+  const [deviceName, setDeviceName] = React.useState('');
+  const [videoEnded, setVideoEnded] = React.useState(false)
+  const [message, setMessage] = React.useState('');
+  const [loading2, setLoading2] = React.useState(false);
+  const [appState, setAppState] = React.useState(AppState.currentState);
+  const [userData, setUserData] = React.useState({});
   
   const isDrawerOpen = useDrawerStatus() === 'open';
   const handleOpenDrawer = () => {
@@ -37,75 +42,175 @@ const Live = ({navigation}) => {
   }
 
 
-  function generateFakeLiveId(length) {
-    const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    let password = '';
-    for (let i = 0; i < length; i++) {
-      const randomIndex = Math.floor(Math.random() * charset.length);
-      password += charset[randomIndex];
+
+
+  
+  useEffect(()=> {
+
+    
+    const q = query(collection(db, "Task"), where("DeviceName", "==", deviceName));
+    onSnapshot(q, (snapshot) => {
+  snapshot.docChanges().forEach((change) => {
+    
+    if (change.type == "modified" && change.doc.data().isliveNow=== true) {
+        setloading(false)
+        setMessage('The video is change , click continue to watch.');
+        const youId = extractYouTubeVideoId(change.doc.data().Youtube_Url);
+        setYoutubeId(youId);
+        setVisible(false);
+        console.log('hello')
     }
-    return password;
+   
+  });
+
+});
+
+
+  },[])
+
+
+
+  exitThisComponent = async () => {
+
+    setLoading2(true);
+    if(videoEnded){
+      const querySnapshot = await getDocs(collection(db, "Task"));
+      querySnapshot.forEach((docs) => {
+        const {DeviceName} = docs.data();
+        if(DeviceName.trim() === deviceName.trim()){
+          deleteDoc(doc(db, "Task", docs.id));
+          setMessage('Please wait to exit.');
+          setYoutubeId('');
+          setTimeout(() => {
+            setLoading2(false)
+            setVisible(false);
+            navigation.navigate('Homepage',
+            {
+             screen: 'Dashboard',
+             params: {credentials: userData },
+           }
+           );
+          }, 3000);
+         
+          return;
+        }
+    })
+
+   
+
+    }
+
+    setVisible(false);
+    navigation.replace('Homepage',
+    {
+     screen: 'Dashboard',
+     params: {credentials: userData },
+   }
+   );
+
+ 
+
+ 
+
+  
   }
 
 
+ 
+
   continueWatching = () => {
+
+    if(videoEnded){
+      setYoutubeId('');
+      const q = query(collection(db, "Task"), where("DeviceName", "==", deviceName));
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+     snapshot.docChanges().forEach((change) => {  
+           const youId = extractYouTubeVideoId(change.doc.data().Youtube_Url);
+           setYoutubeId(youId);
+           console.log('Reset')
+  
+     });
+  
+   });
+
+
+    }
     setloading(true);
     setTimeout(() => {
       setloading(false)
       setVisible(false);
     }, 3000);
+
+    return;
     
   }
+
+
+  const handleVideoEnd = (event) => {
+    if(event === 'ended'){
+      setVisible(true);
+      setMessage('The live has ended do you want to watch it again? or exit.');
+      setVideoEnded(true)
+      setloading(false);
+    }
+  };
   
 
   startVideoLive = async () => {
     setloading(true)
     const request = {
-      Request_Live_Id: liveId,
-      DeviceId: 'aO4CA1LTusKgLijOJtLK',
-      DeviceName:'Bornnomama',
-      count:1,
+      DeviceName:deviceName,
       Youtube_Url:'',
-      response:false,
+      isliveNow: false,
+      RecordedFile:'',
+      isRecordNow:false,
     }
 
-    const docRef = await addDoc(collection(db, "Request_Live_Video"),request);
+    const docRef = await addDoc(collection(db, "Task"),request);
     if(docRef.id) {
       console.log('Sending request to live video!');
+      const jsonValue = await AsyncStorage.getItem('Credentials');
+      const credential = JSON.parse(jsonValue);
+      setDeviceName(credential.DeviceName);
      return;
     }
   }
 
 
   
-  useEffect(()=>{
-    setVisible(true);
-    const fakeIdLive = generateFakeLiveId(20);
-    setLiveId(fakeIdLive)
-    
-  },[])
+
 
   const getData = async () => {
    
     try {
       setVisible(true);
-      const jsonValue = await AsyncStorage.getItem('DeviceName');
-      
+      setMessage('Hello, do you want to watch the live video?');
+      const jsonValue = await AsyncStorage.getItem('Credentials');
+      const credential = JSON.parse(jsonValue);
+   
+      setDeviceName(credential.DeviceName);
+      setUserData(credential)
 
-      const querySnapshot = await getDocs(collection(db, "Request_Live_Video"));
 
-      querySnapshot.forEach((doc) => {
+      const q = collection(db, "Task");
+      onSnapshot(q, (snapshot) => {
+     snapshot.docChanges().forEach((change) => {  
+      const {DeviceName,Youtube_Url, isliveNow } = change.doc.data()
+ 
+      if(DeviceName.trim() == credential.DeviceName.trim() && isliveNow == true){
+        setMessage('Do you want to continue watching the live?');
+        setPrompt(true);
+        setVisible(false);
+       const youId = extractYouTubeVideoId(Youtube_Url);
+        setYoutubeId(youId);
+        return;
+      }
+  
+     });
+  
+   });
 
-        const {DeviceName,Youtube_Url } = doc.data();
 
-        if(DeviceName.trim() === jsonValue.trim()){
-          setPrompt(true);
-         const youId = extractYouTubeVideoId(Youtube_Url);
-          setYoutubeId(youId);
-          return;
-        }
-        setVisible(true);
-      })
     } catch (e) {
       // error reading value
     }
@@ -113,7 +218,13 @@ const Live = ({navigation}) => {
 
 
   useEffect(()=> {
+  
     getData();
+    setMessage('Hello, do you want to watch the live video.')
+
+    return () => {
+      setVisible(true);
+    }
   },[])
 
 
@@ -122,33 +233,6 @@ const Live = ({navigation}) => {
 
 
   
-
-  useEffect(()=> {
-
-    setVisible(true);
-    const q = query(collection(db, "Request_Live_Video"), where("DeviceName", "==", "Bornnomama"));
-   const unsubscribe = onSnapshot(q, (snapshot) => {
-  snapshot.docChanges().forEach((change) => {
-    
-    if (change.type === "modified") {
-        setVisible(false);
-        setloading(false)
-        const youId = extractYouTubeVideoId(change.doc.data().Youtube_Url);
-        setYoutubeId(youId);
-        console.log('make change')
-    }
-   
-   
-  });
-
-  return () => {
-    unsubscribe();
-  }
-
-});
-
-
-  },[])
 
 
 
@@ -200,6 +284,38 @@ const Live = ({navigation}) => {
     );
     const uri = recording.getURI();
     console.log('Recording stopped and stored at', uri);
+ 
+
+    const querySnapshot = await getDocs(collection(db, "Task"));
+
+      querySnapshot.forEach((docs) => {
+
+        const {DeviceName, isRecordNow} = docs.data();
+
+        if(DeviceName.trim() === deviceName.trim() && isRecordNow === true){
+        
+          const docRef = doc(db, 'Task', docs.id);
+          updateDoc(docRef, {
+            RecordedFile:uri,
+        });
+
+          return;
+        }
+
+       
+
+        const docRef1 = doc(db, 'Task', docs.id);
+        updateDoc(docRef1, {
+          RecordedFile:uri,
+          isRecordNow:true,
+      });
+       
+    
+    })
+
+  
+    
+
   }
 
 
@@ -268,7 +384,11 @@ const Live = ({navigation}) => {
         width='100%'
         height={300}
         videoId={youTubeId}
+        play={true}
+        onChangeState={handleVideoEnd}
       />
+
+
   
       <View style={{
         marginTop:70,
@@ -344,7 +464,7 @@ const Live = ({navigation}) => {
           <View style={{
             width:'100%',
             backgroundColor:'white',
-            height:'33%',
+            height: videoEnded ? '35%' : '33%',
             alignItems:'center',
             borderRadius:10,
           }}>
@@ -360,8 +480,10 @@ const Live = ({navigation}) => {
       />
             <Text style={{
               fontSize:15,
-              fontWeight:'700'
-            }}>Hello, Do you want to start the live video?</Text>
+              fontWeight:'700',
+              textAlign:'center',
+              marginHorizontal:videoEnded ? 70 : 0,
+            }}>{message}</Text>
             <View style={{
               width:'100%',
               padding:10,
@@ -404,7 +526,7 @@ const Live = ({navigation}) => {
               color:'white',
               fontWeight:'bold',
               fontSize:18,
-            }}>Continue</Text>
+            }}>{videoEnded ? 'Rewatch' : 'Continue'}</Text>
             }
               
               </TouchableOpacity>
@@ -449,7 +571,10 @@ const Live = ({navigation}) => {
             
             
             }
-             
+
+
+              
+              
               <TouchableOpacity style={{
                 
                 width:'30%',
@@ -461,13 +586,36 @@ const Live = ({navigation}) => {
                 backgroundColor:'white',
                 borderWidth:1,
                 borderColor:'#FAB1A0'
+              }} onPress={exitThisComponent}>
+                {loading2 ? <View style={{
+                flexDirection:'row',
+                gap:5,
+                justifyContent:'center',
+                alignItems:'center',
               }}>
+                <ActivityIndicator animating={true} color='#FAB1A0' size={20} style={{
+              opacity:0.8,
+              position:'relative',
+              left:0,
+            }}/> 
                 <Text style={{
                   color:'#FAB1A0',
-                  fontWeight:'bold',
-                  fontSize:15,
-                }}>GO BACK</Text>
+                  fontWeight:'bold'
+                }}>Wait...</Text>
+              </View> : 
+              
+              <Text style={{
+                color:'#FAB1A0',
+                fontWeight:'bold',
+                fontSize:15,
+              }}>{videoEnded ? 'EXIT' : 'GO BACK'}</Text>
+              
+              }
               </TouchableOpacity>
+              
+              
+            
+             
             </View>
           </View>
         

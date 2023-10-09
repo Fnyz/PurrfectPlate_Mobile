@@ -1,5 +1,5 @@
-import { View, Text, ImageBackground } from 'react-native'
-import React from 'react'
+import { View, Text, ImageBackground , ActivityIndicator} from 'react-native'
+import React, { useEffect, useState } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { TextInput } from 'react-native-paper';
 import { TouchableOpacity } from 'react-native-gesture-handler';
@@ -7,8 +7,88 @@ import { AntDesign } from '@expo/vector-icons';
 import { Entypo } from '@expo/vector-icons';
 import { useDrawerStatus } from '@react-navigation/drawer';
 import { Ionicons } from '@expo/vector-icons';
+import { collection,getFirestore, doc, updateDoc, addDoc, getDocs} from "firebase/firestore"; 
+import app from './firebase';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import Modal from "react-native-modal";
+import {Image} from 'expo-image'
+
+
+const db = getFirestore(app);
 
 const Reports = ({navigation}) => {
+
+  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
+  const [message, setMessage] = useState('');
+  const [deviceName, setDeviceName] = useState('');
+  const [visible, setVisible] = useState(false);
+
+  const getUserData = async () => {
+    const jsonValue = await AsyncStorage.getItem('Credentials');
+    const credential = JSON.parse(jsonValue);
+    setDeviceName(credential.DeviceName);
+  }
+
+  useEffect(()=> {
+    getUserData();
+  },[])
+
+  const handleSubmitReports = async  () => {
+
+    setVisible(true)
+
+    
+    const initialMessages = [
+      { message, timestamp: new Date() }
+    ];
+
+    const reports = {
+      DeviceName: deviceName,
+      Email:email,
+      Username: username,
+      Message:initialMessages,
+      createdAt: new Date(),
+   }
+   
+   const querySnapshot = await getDocs(collection(db, "Reports"));
+      querySnapshot.forEach((docs) => {
+      if(docs.data().DeviceName === deviceName) {
+        setVisible(false)
+        const currentMessage  = docs.data().Message || [];
+        const updatedMessages = [...currentMessage, ...initialMessages];
+        const docRef = doc(db, 'Reports', docs.id);
+        updateDoc(docRef, {
+          Message:updatedMessages,
+      });
+     
+        setEmail('');
+        setMessage('');
+        setUsername('');
+        return;
+      }
+
+      addDoc(collection(db, "Reports"),reports)
+      .then((docs)=> {
+        if(docs.id){
+          setVisible(false)
+          setEmail('');
+          setMessage('');
+          setUsername('');
+        }
+      });
+
+      return;
+    
+  })
+
+
+ 
+
+
+  }
+
+
   const isDrawerOpen = useDrawerStatus() === 'open';
   const handleOpenDrawer = () => {
     navigation.openDrawer();
@@ -76,17 +156,29 @@ const Reports = ({navigation}) => {
       label="Email address"
       mode='outlined'
       activeOutlineColor='coral'
+      value={email}
+      onChangeText={(val) => {
+        setEmail(val);
+      }}
     />
         <TextInput
       label="Username"
       mode='outlined'
       activeOutlineColor='coral'
+      value={username}
+      onChangeText={(val) => {
+        setUsername(val);
+      }}
     />
         <TextInput
       label="Message"
       mode='outlined'
       activeOutlineColor='coral'
       multiline
+      value={message}
+      onChangeText={(val) => {
+        setMessage(val);
+      }}
     />
         </View>
         
@@ -99,7 +191,7 @@ const Reports = ({navigation}) => {
         borderRadius: 10,
         backgroundColor: '#FAB1A0',
         opacity: 0.8,
-        }}>
+        }} onPress={handleSubmitReports}>
           <Text style={{
           fontSize: 20,
           fontWeight: 'bold',
@@ -146,6 +238,49 @@ const Reports = ({navigation}) => {
      </TouchableOpacity>
 
       </View>
+
+
+      <Modal isVisible={visible} animationIn='slideInLeft'>
+        <View style={{ height:70,
+        borderColor:'red',
+        marginHorizontal:20,
+        borderRadius:5,
+        flexDirection:'row',
+        justifyContent:'center',
+        alignItems:'center',
+        backgroundColor:'rgba(0,0,0,0.9)',
+        gap:5,
+        position:'relative'
+        }}>
+          <View style={{
+              position:'absolute',
+              zIndex:1,
+              right:10,
+              top:-50,
+
+            }}>
+             <Image source={require('../assets/petss.png')} style={{
+              width:75,
+              height:140,
+             }} />
+            </View>
+          <ActivityIndicator animating={true} color='coral' size={25} style={{
+              opacity:0.8,
+              position:'relative',
+              left:-10,
+            }}/>
+
+          <Text style={{
+              fontSize:25,
+              opacity:0.9,
+              position:'relative',
+              left:-5,
+              color:'white',
+              fontWeight:'bold',
+            }}>Sending...</Text>
+        </View>
+      </Modal>
+
       </ImageBackground>
     </SafeAreaView>
   )

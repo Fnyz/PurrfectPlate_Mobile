@@ -99,7 +99,7 @@ const ConnectDevice = ({navigation, route : {params}}) => {
 
         const storeData = async () => {
           try {
-            await AsyncStorage.setItem('DeviceName', DeviceName);
+            await AsyncStorage.setItem('Credentials', JSON.stringify(credentials));
             navigation.replace('Homepage',
         {
           screen: 'Dashboard',
