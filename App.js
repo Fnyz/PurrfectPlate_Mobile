@@ -17,6 +17,9 @@ import Schedule from './src/Schedule';
 import Live from './src/Live';
 import { MaterialIcons } from '@expo/vector-icons';
 import Reports from './src/Reports';
+import ProfileUpdate from './src/ProfileUpdate';
+import UpdatePassword from './src/UpdatePassword';
+
 
 
 
@@ -123,6 +126,8 @@ const AppStack = () => {
         <Stack.Screen name="DetailsPage" component={DetailsPage} />
         <Stack.Screen name="Homepage" component={NavDrawer} />
         <Stack.Screen name="ConnectDevice" component={ConnectDevice} />
+        <Stack.Screen name="UpdateProfile" component={ProfileUpdate} />
+        <Stack.Screen name="UpdatePassword" component={UpdatePassword} />
       </Stack.Navigator>
   );
 };

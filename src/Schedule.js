@@ -160,14 +160,16 @@ const Schedule = ({navigation}) => {
     }
 
     // Add the new food item and time to the list
-    setFoodItems([...foodItems, { time: formattedTime, cups: caps }]);
+    setFoodItems([...foodItems, { time: formattedTime.split(' ')[0], cups: caps }]);
     setCaps('');  
   };
 
 
   const removeFoodItem = (selectedTime) => {
-    setFoodItems(foodItems.filter((item) => item.time !== selectedTime));
+    setFoodItems(foodItems.filter((item) => item.time.split(' ')[0] !== selectedTime));
   };
+
+
 
 
 
@@ -176,15 +178,15 @@ const Schedule = ({navigation}) => {
     if (selectedTime !== undefined) {
       // Handle the selected time, for example, update state with the selected time.
       setTime(selectedTime);
+     
 
 
       const hours = selectedTime.getHours();
       const minutes = selectedTime.getMinutes();
       const ampm = hours >= 12 ? 'PM' : 'AM';
-      const formattedHours = hours % 12 || 12; // Convert to 12-hour format
-
+  
       // Create the formatted time string
-      const formattedTimeString = `${formattedHours}:${minutes.toString().padStart(2, '0')} ${ampm}`;
+      const formattedTimeString = `${hours}:${minutes.toString().padStart(2, '0')} ${ampm}`;
       setFormattedTime(formattedTimeString);
     }
   };
@@ -488,7 +490,7 @@ const Schedule = ({navigation}) => {
         testID="timePicker"
         value={time}
         mode="time"
-        is24Hour={false}
+        is24Hour={true}
         display="default"
         onChange={onTimeChange}
         />
@@ -561,7 +563,7 @@ const Schedule = ({navigation}) => {
                 fontSize:17,
                 color:'white'   
               }}>
-                {item.time}
+                {`${item.time} ${item.time.split(':')[0] >= 12 ? 'PM' : 'AM'}`}
               </Text>
               <Text style={{
                 fontSize:30, 

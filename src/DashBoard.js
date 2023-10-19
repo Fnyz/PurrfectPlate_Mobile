@@ -6,16 +6,20 @@ import { Image } from 'expo-image';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Searchbar } from 'react-native-paper';
 import NotificationList from './components/notificationList';
-import { PetData } from '../DummyData';
 import PetList from './components/PetList';
 import Swiper from 'react-native-swiper'
 import { useDrawerStatus } from '@react-navigation/drawer';
-import { doc, getDoc, getFirestore, collection, query, where, onSnapshot } from "firebase/firestore";
+import { doc,  getFirestore, collection, query, where, onSnapshot } from "firebase/firestore";
 import app from './firebase';
+import { FontAwesome } from '@expo/vector-icons';
+import { AntDesign } from '@expo/vector-icons';
+import { getAuth, signOut } from "firebase/auth";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 
 
 const db = getFirestore(app);
+const auth = getAuth(app);
 
 const petNotification = [
     {
@@ -51,17 +55,23 @@ const DashBoard = ({navigation,route: {params: { credentials }}}) => {
     navigation.openDrawer();
   }
 
+
   getUserProfile = async () => {
 
-    const docRef = doc(db, "users", credentials.userId);
-  const docSnap = await getDoc(docRef);
+    onSnapshot(doc(db, "users", credentials.userId), (doc) => {
+       setProfileData(doc.data());
+     });
+  }
 
-if (docSnap.exists()) {
-  setProfileData(docSnap.data());
-} else {
-  
-  console.log("No such document!");
-}
+  onLogOut = async () => {
+    await AsyncStorage.removeItem('Credentials')
+    signOut(auth).then(() => {
+      navigation.replace('LoginSignUp',{
+        change:false
+      } )
+    }).catch((error) => {
+      console.log('there was an error');
+    });
   }
 
   useEffect(()=>{
@@ -115,6 +125,11 @@ if (docSnap.exists()) {
         gap:10,
        
       }}>
+
+<View style={{
+          position:'relative'
+        }}>
+          
     <View style={{
         borderRadius:50,
         padding:2,
@@ -128,10 +143,30 @@ if (docSnap.exists()) {
           opacity:0.9,
           borderRadius:50,
         }}
-        source={require('../assets/Image/anya.png')}
+        source={{uri:profile.image}}
         contentFit="cover"
         transition={1000}
       />
+    </View>
+
+
+    <TouchableOpacity onPress={()=> navigation.navigate('UpdateProfile',{profile})}>
+    <View style={{
+      position:'absolute',
+      bottom:1,
+      right:0,
+      height:24,
+      backgroundColor:'#FAB1A0',
+      padding:5,
+      justifyContent:'center',
+      alignItems:'center',
+      borderRadius:100,
+      elevation:3,
+    }}>
+    <FontAwesome name="pencil-square-o" size={15} color="white"  />
+    </View>
+    </TouchableOpacity>
+
     </View>
      
       <View>
@@ -160,8 +195,23 @@ if (docSnap.exists()) {
 
       </View>
       <View style={{
-        paddingTop:7,
+       flexDirection:'row',
+       gap:5,
+       justifyContent:'center',
+       alignItems:'center',
       }}>
+         <TouchableOpacity onPress={onLogOut}>
+         <AntDesign name="logout" size={23} color="black" style={{
+          opacity:0.6,
+          fontWeight:'bold',
+        }} />
+       </TouchableOpacity>
+
+        <Text style={{
+          fontSize:35,
+          color:'#FAB1A0',
+          fontWeight:'bold',
+        }}>/</Text>
         <TouchableOpacity onPress={()=> 
         handleOpenDrawer()
        
