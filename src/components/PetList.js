@@ -3,13 +3,17 @@ import React from 'react'
 import { Image } from 'expo-image';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
-const PetList = ({img,name, weight, gender, Age, navigation}) => {
+const PetList = ({navigation, dt, id}) => {
+
+  const {image,Petname, Weight, Gender, Age, DeviceName, GoalWeight} = dt
+
   return (
     <View style={{
         borderRadius:2,
         padding:10,
         margin:5,
         elevation:1,
+        width:176,
     }}>
         <View style={{
             overflow:'hidden',
@@ -23,7 +27,7 @@ const PetList = ({img,name, weight, gender, Age, navigation}) => {
           opacity:0.9,
           objectFit:'contain'
         }}
-        source={{uri:img}}
+        source={{uri:image}}
         contentFit="cover"
         transition={1000}
       />
@@ -36,7 +40,7 @@ const PetList = ({img,name, weight, gender, Age, navigation}) => {
         fontWeight:'bold',
         fontSize:17,
       }}>
-        {name}
+        {Petname}
       </Text>
       <View style={{
         flexDirection:'row',
@@ -49,7 +53,7 @@ const PetList = ({img,name, weight, gender, Age, navigation}) => {
         }}>
             Weight: <Text style={{
                 fontWeight:'bold',
-            }}>{weight}kg</Text>
+            }}>{Weight}</Text>
         </Text>
         <Text
          style={{
@@ -59,7 +63,7 @@ const PetList = ({img,name, weight, gender, Age, navigation}) => {
         }}>
             Gender: <Text style={{
                 fontWeight:'bold',
-            }}>{gender}</Text>
+            }}>{Gender}</Text>
         </Text>
         <Text
          style={{
@@ -75,18 +79,21 @@ const PetList = ({img,name, weight, gender, Age, navigation}) => {
       </View>
       <TouchableOpacity style={{
         backgroundColor:'#908EDF',
-        width:60,
+        width:52,
         justifyContent:'space-between',
         alignItems:'center',
         borderBottomRightRadius:5,
         opacity:0.7,
       }} onPress={()=>navigation.navigate('DetailsPage',{
-        img,
-        weight,
-        gender,
-        age:Age,
-        name,
-        date:'Today at 5 hours ago.'
+        image,
+        Weight,
+        Gender,
+        Age:Age,
+        Petname,
+        DeviceName,
+        GoalWeight,
+        date:'Today at 5 hours ago.',
+        id:id
       })}>
       <MaterialCommunityIcons name="view-list" size={45} color="white" />
       </TouchableOpacity>

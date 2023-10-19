@@ -18,6 +18,7 @@ import {  AlertNotificationRoot, ALERT_TYPE, Dialog } from 'react-native-alert-n
 import {useForm, Controller} from 'react-hook-form';
 import DropDownPicker from "react-native-dropdown-picker";
 import { petsData } from '../animeData';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 
 const Box = React.memo(({Cat, Dog, image, handleCloseModal, pickImage, handlePickImage, click, handleSave}) => {
@@ -201,7 +202,21 @@ const AddPets= ({navigation}) => {
 
   const [loadingRf, setLoad1] = useState(false);
   const [loadingWth, setLoad2] = useState(false);
+  const [deviceName, setDeviceName] = useState('');
+  const [userData, setUserData] = useState({});
 
+
+
+  const getUserData = async () => {
+    const jsonValue = await AsyncStorage.getItem('Credentials');
+    const credential = JSON.parse(jsonValue);
+    setDeviceName(credential.DeviceName);
+    setUserData(credential)
+  }
+
+  useEffect(()=> {
+    getUserData();
+  },[])
 
 
 
@@ -314,10 +329,11 @@ const AddPets= ({navigation}) => {
       return;
     }
 
-     const res = datas.find(d => d?.Petname.toLowerCase().trim() === petName.toLowerCase().trim());
+     const res = datas.find(d => d?.Petname.toLowerCase().trim() === petName.toLowerCase().trim() && d?.DeviceName.toLowerCase().trim() === deviceName.toLowerCase().trim());
     
      if(!res){
       const docRef = await addDoc(collection(db, "List_of_Pets"), {
+        DeviceName:deviceName,
         Petname: petName,
         Gender,
         Rfid,

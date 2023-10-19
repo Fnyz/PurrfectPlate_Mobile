@@ -1,34 +1,117 @@
-import { View, Text, ImageBackground, TouchableOpacity } from 'react-native'
-import React, { useEffect, useState } from 'react'
+import { View, Text, ImageBackground, TouchableOpacity, ActivityIndicator } from 'react-native'
+import React, { useCallback, useEffect, useState } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Image } from 'expo-image';
 import { TextInput } from 'react-native-paper';
 import { Entypo } from '@expo/vector-icons';
 import { AntDesign } from '@expo/vector-icons';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { doc, updateDoc, getFirestore,  deleteDoc} from "firebase/firestore";
+import app from './firebase';
+import Modal from "react-native-modal";
+import { ALERT_TYPE, Dialog, AlertNotificationRoot } from 'react-native-alert-notification';
+import {useForm, Controller} from 'react-hook-form';
+import DropDownPicker from "react-native-dropdown-picker";
+
+
+
+const db = getFirestore(app);
+
 
 const DetailsPage = ({route, navigation}) => {
-  const {img, weight, gender, age, name, date} = route.params;
-
-  
+  const {image, Weight, Gender, Age, Petname, date, DeviceName, id, GoalWeight} = route.params;
 
   const [w, setW] = useState(null);
-  const [g, setG] = useState(null);
   const [a, setA] = useState(null);
   const [n, setN] = useState(null);
+  const [img, setImg] = useState(null);
+  const [gW, setGw] = useState(null)
+  const [visible, setVisible] = useState(false);
+  const [isChange, setChange] = useState(false);
+  const[genders, setGender] = useState('');
+  const [genderOpen, setGenderOpen] = useState(false);
+  const [gender, setGenders] = useState([
+    { label: "Male", value: "male" },
+    { label: "Female", value: "female" },
+    { label: "Prefer Not to Say", value: "neutral" },
+  ]);
 
   useEffect(()=>{
-   setW(weight);
-   setG(gender),
-   setA(age),
-   setN(name);
+   setW(Weight);
+   setGender(Gender),
+   setA(Age),
+   setN(Petname);
+   setImg(image)
+   setGw(GoalWeight);
   },[])
+
+  const onGenderOpen = useCallback(() => {
+
+  }, []);
+
+ 
+
+
+  handleUpdate = async () => {
+    setVisible(true)
+    setChange(true)
+    const docUpdate = {
+      Petname:n,
+      Weight:w,
+      Gender:genders,
+      GoalWeight:gW,
+      Age:a,
+    }
+    try {
+      const collects = doc(db, "List_of_Pets", id);
+      await updateDoc(collects, docUpdate);
+      setVisible(false)
+      setChange(false)
+      Dialog.show({
+        type: ALERT_TYPE.SUCCESS,
+        title: 'SUCCESS',
+        textBody: 'Pet info is Updated Successfully.',
+        button: 'close',
+      })
+      setTimeout(() => {
+        navigation.goBack();
+      }, 3000);
+    } catch (error) {
+      console.log(error)
+    }
+  }
+
+  HandleDelete = async () => {
+    setVisible(true)
+    setChange(true)
+    try {
+      await deleteDoc(doc(db, "List_of_Pets", id));
+      setVisible(false)
+      setChange(false)
+      Dialog.show({
+        type: ALERT_TYPE.SUCCESS,
+        title: 'SUCCESS',
+        textBody: 'Pet is Delete Successfully.',
+        button: 'close',
+      })
+      setTimeout(() => {
+        navigation.goBack();
+      }, 3000);
+    } catch (error) {
+      console.log('Something went wrong!');
+      
+    }
+  }
+
+  const { control } = useForm();
   
   
   return (
+
+    <AlertNotificationRoot theme='dark'>
+
+
     <SafeAreaView>
-       
-  
         <ImageBackground source={require('../assets/Image/FirstPage.png')}>
         <View style={{
             height:'100%',
@@ -83,36 +166,71 @@ const DetailsPage = ({route, navigation}) => {
           gap:5,
           marginTop:20,
         }}>
+      <TextInput
+      label="PetName"
+      mode='outlined'
+      activeOutlineColor='coral'
+      value={`${n}`}
+      onChangeText={(val)=> setN(val) }
+      
+    />
         <TextInput
       label="Weight"
       mode='outlined'
       activeOutlineColor='coral'
       value={`${w}`}
+      onChangeText={(val)=> setW(val) }
       
     />
-    <TextInput
-      label="Gender"
-      mode='outlined'
-      activeOutlineColor='coral'
-      value={g}
-    />
+<Controller
+        name="gender"
+        defaultValue=""
+        control={control}
+        render={({ field: { onChange, value } }) => (
+          <View style={{ 
+            width: "100%",
+            marginTop:5,
+            }}>
+            <DropDownPicker
+              style={{borderColor: "#B7B7B7",
+              height: 50}}
+              open={genderOpen}
+              value={genders} 
+              items={gender}
+              setOpen={setGenderOpen}
+              setValue={setGender}
+              placeholder="Select Gender"
+              placeholderStyle={{
+                color: "grey",
+              }}
+              onOpen={onGenderOpen}
+              onChangeValue={onChange}
+              zIndex={3000}
+              zIndexInverse={1000}
+            />
+          </View>
+        )}
+      />
     <TextInput
       label="Goal Weight"
       mode='outlined'
       activeOutlineColor='coral'
-      value={`${15}`}
+      value={`${gW}`}
+      onChangeText={(val)=> setGw(val) }
     />
     <TextInput
       label="Age"
       mode='outlined'
       activeOutlineColor='coral'
       value={`${a}`}
+      onChangeText={(val)=> setA(val) }
     />
      <TextInput
       label="Date Added"
       mode='outlined'
       activeOutlineColor='coral'
       value={date}
+      disabled
     />
 
 
@@ -181,7 +299,7 @@ const DetailsPage = ({route, navigation}) => {
           backgroundColor:'#FAB1A0',
           flexDirection:'row',
           gap:5,
-        }}>
+        }} onPress={handleUpdate}>
         <AntDesign name="edit" size={20} color="white" />
           <Text style={{
             color:'white',
@@ -205,9 +323,52 @@ const DetailsPage = ({route, navigation}) => {
         }}>GO BACK TO HOME.</Text>
         </TouchableOpacity>
         </View>
+
+        <Modal isVisible={visible} animationIn='slideInLeft'>
+        <View style={{ height:70,
+        borderColor:'red',
+        marginHorizontal:20,
+        borderRadius:5,
+        flexDirection:'row',
+        justifyContent:'center',
+        alignItems:'center',
+        backgroundColor:'rgba(0,0,0,0.9)',
+        gap:5,
+        position:'relative'
+        }}>
+          <View style={{
+              position:'absolute',
+              zIndex:1,
+              right:10,
+              top:-50,
+
+            }}>
+             <Image source={require('../assets/petss.png')} style={{
+              width:75,
+              height:140,
+             }} />
+            </View>
+          <ActivityIndicator animating={true} color='coral' size={25} style={{
+              opacity:0.8,
+              position:'relative',
+              left:-10,
+            }}/>
+
+          <Text style={{
+              fontSize:25,
+              opacity:0.9,
+              position:'relative',
+              left:-5,
+              color:'white',
+              fontWeight:'bold',
+            }}>{isChange? 'Updating...':'Deleting...'}</Text>
+        </View>
+      </Modal>
+
         </ImageBackground> 
     
     </SafeAreaView>
+    </AlertNotificationRoot>
   )
 }
 

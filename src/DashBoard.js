@@ -10,7 +10,7 @@ import { PetData } from '../DummyData';
 import PetList from './components/PetList';
 import Swiper from 'react-native-swiper'
 import { useDrawerStatus } from '@react-navigation/drawer';
-import { doc, getDoc, getFirestore } from "firebase/firestore";
+import { doc, getDoc, getFirestore, collection, query, where, onSnapshot } from "firebase/firestore";
 import app from './firebase';
 
 
@@ -45,6 +45,7 @@ const petNotification = [
 const DashBoard = ({navigation,route: {params: { credentials }}}) => {
 
   const [profile, setProfileData] = useState({});
+  const [listOfPet, setListOfPet] = useState([]);
   const isDrawerOpen = useDrawerStatus() === 'open';
   const handleOpenDrawer = () => {
     navigation.openDrawer();
@@ -66,6 +67,26 @@ if (docSnap.exists()) {
   useEffect(()=>{
     getUserProfile();
   },[])
+
+  useEffect(()=>{
+   
+  const q = query(collection(db, "List_of_Pets"), where("DeviceName", "==", credentials.DeviceName));
+   const unsubscribe = onSnapshot(q, (querySnapshot) => {
+  const data = [];
+  querySnapshot.forEach((docs) => {
+      data.push({dt:docs.data(), id: docs.id});
+  });
+
+
+ 
+
+  setListOfPet(data);
+  
+});
+  },[])
+
+
+
 
   
 
@@ -295,7 +316,7 @@ if (docSnap.exists()) {
        height:330,
        }}>
        <FlatList
-        data={PetData}
+        data={listOfPet}
         renderItem={({item})=> {
            return (
             <PetList {...item} navigation={navigation}/>

@@ -1,4 +1,4 @@
-import { View, Text, ImageBackground , ActivityIndicator} from 'react-native'
+import { View, Text, ImageBackground , ActivityIndicator, Keyboard} from 'react-native'
 import React, { useEffect, useState } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { TextInput } from 'react-native-paper';
@@ -12,6 +12,7 @@ import app from './firebase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Modal from "react-native-modal";
 import {Image} from 'expo-image'
+import { ALERT_TYPE, Dialog, AlertNotificationRoot } from 'react-native-alert-notification';
 
 
 const db = getFirestore(app);
@@ -23,18 +24,31 @@ const Reports = ({navigation}) => {
   const [message, setMessage] = useState('');
   const [deviceName, setDeviceName] = useState('');
   const [visible, setVisible] = useState(false);
+  const [data, setData] = useState({})
 
   const getUserData = async () => {
     const jsonValue = await AsyncStorage.getItem('Credentials');
     const credential = JSON.parse(jsonValue);
     setDeviceName(credential.DeviceName);
+    setData(credential)
   }
 
   useEffect(()=> {
     getUserData();
   },[])
 
+  handleGoHome = () => {
+    navigation.navigate('Homepage',
+        {
+          screen: 'Dashboard',
+          params: { credentials: data },
+        }
+    )
+  }
+
   const handleSubmitReports = async  () => {
+
+    Keyboard.dismiss();
 
     setVisible(true)
 
@@ -54,27 +68,43 @@ const Reports = ({navigation}) => {
    const querySnapshot = await getDocs(collection(db, "Reports"));
       querySnapshot.forEach((docs) => {
       if(docs.data().DeviceName === deviceName) {
-        setVisible(false)
+       
         const currentMessage  = docs.data().Message || [];
         const updatedMessages = [...currentMessage, ...initialMessages];
         const docRef = doc(db, 'Reports', docs.id);
         updateDoc(docRef, {
           Message:updatedMessages,
-      });
+       }).then(()=>{
+         setEmail('');
+         setMessage('');
+         setUsername('');
+         Dialog.show({
+          type: ALERT_TYPE.SUCCESS,
+          title: 'SUCCESS',
+          textBody: 'Reports is send successfully!',
+          button: 'close',
+        })
+        setVisible(false)
+
+       });
      
-        setEmail('');
-        setMessage('');
-        setUsername('');
         return;
       }
 
       addDoc(collection(db, "Reports"),reports)
       .then((docs)=> {
         if(docs.id){
-          setVisible(false)
+       
           setEmail('');
           setMessage('');
           setUsername('');
+          Dialog.show({
+            type: ALERT_TYPE.SUCCESS,
+            title: 'SUCCESS',
+            textBody: 'Reports is send successfully!',
+            button: 'close',
+          })
+          setVisible(false);
         }
       });
 
@@ -95,6 +125,9 @@ const Reports = ({navigation}) => {
   }
   
   return (
+
+    <AlertNotificationRoot theme='dark'>
+
     <SafeAreaView>
       <ImageBackground source = {require('../assets/Image/FirstPage.png')}
       style={{
@@ -208,7 +241,7 @@ const Reports = ({navigation}) => {
      borderRadius: 10,
 
      opacity: 0.8,
-     }}>
+     }} onPress={handleGoHome}>
        <Text style={{
        fontSize: 20,
        fontWeight: 'bold',
@@ -283,6 +316,7 @@ const Reports = ({navigation}) => {
 
       </ImageBackground>
     </SafeAreaView>
+    </AlertNotificationRoot>
   )
 }
 
