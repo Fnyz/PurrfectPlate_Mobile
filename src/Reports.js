@@ -13,8 +13,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Modal from "react-native-modal";
 import {Image} from 'expo-image'
 import { ALERT_TYPE, Dialog, AlertNotificationRoot } from 'react-native-alert-notification';
-
-
+import { FontAwesome } from '@expo/vector-icons';
+import { Avatar } from 'react-native-paper';
 const db = getFirestore(app);
 
 const Reports = ({navigation}) => {
@@ -312,6 +312,100 @@ const Reports = ({navigation}) => {
               fontWeight:'bold',
             }}>Sending...</Text>
         </View>
+      </Modal>
+
+      <Modal isVisible={true} animationIn='slideInLeft'>
+       <View style={{
+        flex:1,
+        backgroundColor:'white',
+        padding:10,
+       }}>
+        <View style={{
+            flexDirection:'row',
+            justifyContent:'space-between',
+            alignItems:'center',
+            padding:5,
+          }}>
+          <Text style={{
+            fontSize:22,
+            fontWeight:'bold',
+            opacity:0.7
+          }}><Text style={{
+            color:'coral',
+            fontSize:25,
+            fontWeight:'bold'
+          }}>|</Text> Message</Text>
+          <TouchableOpacity onPress={()=> setVisible(false)}>
+          <AntDesign name="close" size={24} color="red" />    
+          </TouchableOpacity>
+          </View>
+
+          <View style={{
+            flex:1,
+            elevation:2,
+            marginBottom:10,
+            padding:10,
+          }}>
+            <View style={{
+              flexDirection:'row',
+              alignSelf:'flex-start',
+              alignItems:'center',
+              gap:10,
+            }}>
+              <Avatar.Image size={40} source={require('../assets/petss.png')} />
+              <View>
+                <Text style={{
+                  fontSize:13,
+                  opacity:0.6,
+                }}>Admin / 10:23 pm : 10/20/30</Text>
+                <Text style={{
+                  fontWeight:'bold',
+                  fontSize:17,
+                }}>What can i do for you?</Text>
+              </View>
+            </View>
+          </View>
+          <View style={{
+            flexDirection:'row',
+            justifyContent:'center',
+            alignItems:'center',
+            gap:5,
+          }}>
+          <TextInput
+      label="Input Message"
+      mode='outlined'
+      placeholder='Message here the admin'
+      activeOutlineColor='coral'
+      value={email}
+      onChangeText={(val) => {
+        setEmail(val);
+      }}
+      multiline
+      style={{
+        flex:1,
+      }}
+    />
+
+          <TouchableOpacity style={{
+            backgroundColor:'#FAB1A0',
+            padding:15,
+            flexDirection:'row',
+            justifyContent:'center',
+            alignItems: 'center',
+            gap:10,
+            marginTop:6,
+            borderRadius:5,
+          }}>
+          <FontAwesome name="send" size={20} color="white" />
+          <Text style={{
+            fontWeight:'bold',
+            color:'white',
+          }}>SEND</Text>
+          </TouchableOpacity>
+          </View>
+         
+          
+       </View>
       </Modal>
 
       </ImageBackground>
