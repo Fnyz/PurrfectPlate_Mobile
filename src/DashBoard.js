@@ -1,5 +1,5 @@
 import { View, Text, FlatList, Dimensions, TouchableOpacity} from 'react-native'
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
@@ -9,12 +9,15 @@ import NotificationList from './components/notificationList';
 import PetList from './components/PetList';
 import Swiper from 'react-native-swiper'
 import { useDrawerStatus } from '@react-navigation/drawer';
-import { doc,  getFirestore, collection, query, where, onSnapshot } from "firebase/firestore";
+import { doc,  getFirestore, collection, query, where, onSnapshot , orderBy} from "firebase/firestore";
 import app from './firebase';
 import { FontAwesome } from '@expo/vector-icons';
 import { AntDesign } from '@expo/vector-icons';
 import { getAuth, signOut } from "firebase/auth";
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Modal from "react-native-modal";
+import ListPet from './components/ListPet';
+
 
 
 
@@ -50,7 +53,9 @@ const DashBoard = ({navigation,route: {params: { credentials }}}) => {
 
   const [profile, setProfileData] = useState({});
   const [listOfPet, setListOfPet] = useState([]);
+  const [search, setSearchData] = useState('');
   const isDrawerOpen = useDrawerStatus() === 'open';
+  const [visible, setVisible] = useState(false)
   const handleOpenDrawer = () => {
     navigation.openDrawer();
   }
@@ -72,24 +77,56 @@ const DashBoard = ({navigation,route: {params: { credentials }}}) => {
     }).catch((error) => {
       console.log('there was an error');
     });
+
+    
   }
 
   useEffect(()=>{
     getUserProfile();
   },[])
 
-  useEffect(()=>{
-   
-  const q = query(collection(db, "List_of_Pets"), where("DeviceName", "==", credentials.DeviceName));
-   const unsubscribe = onSnapshot(q, (querySnapshot) => {
-  const data = [];
-  querySnapshot.forEach((docs) => {
-      data.push({dt:docs.data(), id: docs.id});
-  });
+  
 
+  useEffect(()=> {
+    if(search.length === 0){
+      const q = query(collection(db, "List_of_Pets"), where("DeviceName", "==", credentials.DeviceName.trim()), orderBy("Created_at", "desc"));
+      onSnapshot(q, (querySnapshot) => {
+     const data = [];
+     querySnapshot.forEach((docs) => {
+         data.push({dt:docs.data(), id: docs.id});
+         console.log(docs.data());
+     });
+     
+     setListOfPet(data);
+     
+   });
+      return;
+    };
+    const pets = [...listOfPet];
+    const result = pets.filter((ds) => {
+      if(ds.dt.Petname.trim().toLowerCase().includes(search.toLowerCase().trim())){
+        return ds;
+      }
+    })
+
+    setListOfPet(result);
+    
+  },[search])
+
+  
 
  
 
+  useEffect(()=>{
+   
+  const q = query(collection(db, "List_of_Pets"), where("DeviceName", "==", credentials.DeviceName.trim()), orderBy("Created_at", "desc"));
+   onSnapshot(q, (querySnapshot) => {
+  const data = [];
+  querySnapshot.forEach((docs) => {
+      data.push({dt:docs.data(), id: docs.id});
+      console.log(docs.data());
+  });
+  
   setListOfPet(data);
   
 });
@@ -251,6 +288,8 @@ const DashBoard = ({navigation,route: {params: { credentials }}}) => {
       style={{
         marginTop:10,
       }}
+      value={search}
+      onChangeText={(val) => setSearchData(val)}
     />
     <View style={{
         flexDirection:'row',
@@ -265,9 +304,12 @@ const DashBoard = ({navigation,route: {params: { credentials }}}) => {
       }}>
         Notification
       </Text>
+      <TouchableOpacity >
       <Text style={{
         opacity:0.5
       }}>See all</Text>
+      </TouchableOpacity>
+  
     </View>
     <View style={{
         marginTop:7,
@@ -358,14 +400,42 @@ const DashBoard = ({navigation,route: {params: { credentials }}}) => {
             opacity:0.6
         }} 
         >List of Pet</Text>
+        <TouchableOpacity onPress={()=> setVisible(true)}>
         <Text style={{
             opacity:0.5
         }}>See all</Text>
+          </TouchableOpacity>
     </View>
        <View style={{
        height:330,
        }}>
-       <FlatList
+
+        
+
+        {!listOfPet.length  && 
+        <View style={{
+          justifyContent:'center',
+          alignItems:'center',
+        }}>
+          <Image
+        style={{
+          width:250,
+          height:250,
+          opacity:0.9,
+          borderRadius:50,
+        }}
+        source={require('../assets/Doggy1.png')}
+        contentFit="cover"
+        transition={1000}
+      />
+      <Text style={{
+        fontSize:20,
+        fontWeight:'bold',
+      }}>No pets found!</Text>
+        </View>
+        }
+        {listOfPet && 
+        <FlatList
         data={listOfPet}
         renderItem={({item})=> {
            return (
@@ -379,9 +449,53 @@ const DashBoard = ({navigation,route: {params: { credentials }}}) => {
             gap:5
         }}
       />
-   
+      
+        }
+       
        </View>
       </View>
+
+      <Modal isVisible={visible} animationIn='slideInLeft' animationOut='fadeOut'>
+        <View style={{
+          flex:1,
+          backgroundColor:'white',
+          padding:'auto',
+        }}>
+          <View style={{
+            flexDirection:'row',
+            justifyContent:'space-between',
+            alignItems:'center',
+            padding:5,
+          }}>
+          <Text style={{
+            fontSize:22,
+            fontWeight:'bold',
+            opacity:0.7
+          }}><Text style={{
+            color:'coral',
+            fontSize:25,
+            fontWeight:'bold'
+          }}>|</Text> List of Pets</Text>
+          <TouchableOpacity onPress={()=> setVisible(false)}>
+          <AntDesign name="close" size={24} color="red" />    
+          </TouchableOpacity>
+          </View>
+          <FlatList
+        data={listOfPet}
+        renderItem={({item})=> {
+           return (
+            <ListPet {...item} navigation={navigation} setVisible={setVisible}/>
+           )
+        }}
+        numColumns={1}
+        contentContainerStyle={{
+            justifyContent:'space-between',
+            alignItems:'center',
+            gap:5
+        }}
+      />
+        </View>
+       </Modal>
     </SafeAreaView>
   )
 }

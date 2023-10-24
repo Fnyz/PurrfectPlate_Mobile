@@ -1,4 +1,4 @@
-import { View, Text, ImageBackground, TouchableOpacity, ScrollView, Keyboard} from 'react-native'
+import { View, Text, ImageBackground, TouchableOpacity, Keyboard,ActivityIndicator} from 'react-native'
 import React, { useEffect, useState } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons';
@@ -23,6 +23,7 @@ const ConnectDevice = ({navigation, route : {params}}) => {
 
   const [deviceName, setDeviceName] = useState('');
   const [password, setPassword] = useState('');
+  const [click, setClick] = useState(false);
 
 
 
@@ -30,11 +31,12 @@ const ConnectDevice = ({navigation, route : {params}}) => {
 
 
     Keyboard.dismiss();
+    setClick(true);
 
    
 
     const credentials = {
-      DeviceName: deviceName,
+      DeviceName: deviceName.trim(),
       password: password,
       email:params.email,
       userId:params.id,
@@ -43,6 +45,7 @@ const ConnectDevice = ({navigation, route : {params}}) => {
     try {
 
       if(!deviceName || !password){
+        setClick(false);
         Dialog.show({
           type: ALERT_TYPE.DANGER,
           title: 'Oppps.',
@@ -55,6 +58,7 @@ const ConnectDevice = ({navigation, route : {params}}) => {
 
       if(password.length < 4) {
         setPassword('');
+        setClick(false);
         Dialog.show({
           type: ALERT_TYPE.DANGER,
           title: 'Oppps.',
@@ -72,6 +76,7 @@ const ConnectDevice = ({navigation, route : {params}}) => {
       const {email, DeviceName, password: pass } = doc.data();
 
       if(password !== pass) {
+        setClick(false);
         Dialog.show({
           type: ALERT_TYPE.DANGER,
           title: 'Oppps.',
@@ -84,6 +89,7 @@ const ConnectDevice = ({navigation, route : {params}}) => {
 
 
       if(email.toLowerCase().trim() !== credentials.email.toLowerCase().trim() || DeviceName.toLowerCase().trim() !==  deviceName.toLowerCase().trim()) {
+        setClick(false);
         Dialog.show({
           type: ALERT_TYPE.DANGER,
           title: 'Oppps.',
@@ -96,7 +102,7 @@ const ConnectDevice = ({navigation, route : {params}}) => {
 
 
       if(email.toLowerCase().trim() === credentials.email.toLowerCase().trim() && DeviceName.toLowerCase().trim() ===  deviceName.toLowerCase().trim()) {
-
+        setClick(false);
         const storeData = async () => {
           try {
             await AsyncStorage.setItem('Credentials', JSON.stringify(credentials));
@@ -145,13 +151,6 @@ const ConnectDevice = ({navigation, route : {params}}) => {
       setSecureEntry(prev => !prev);
     }
   
-    
-const ipData = [
-    {ip: '192.168.255.10'},
-    {ip: '192.168.255.12'},
-    {ip: '192.168.255.5'},
-]
-
 
 
   return (
@@ -180,95 +179,22 @@ const ipData = [
         opacity:0.8
       }} />
         </TouchableOpacity>
+      
         <View style={{
-          marginTop:30,
-        }}>
-            <Text style={{
-              fontWeight:'bold',
-              fontSize:25,
-            }}>
-            Connect Via Wifi
-            </Text>
-            <Text style={{
-              opacity:0.5
-            }}>
-            Please choose to connect device
-            </Text>
-        </View>
-        <View style={{
-          height:200,
-          marginTop:15,
-        }}>
-            <ScrollView>
-                {ipData.map((d,i)=> {
-                  return (
-                    <View key={i} style={{
-                      marginTop:10,
-                      flexDirection:'row',
-                      justifyContent:'space-between'
-                    }}>
-                        <View style={{
-                          flexDirection:'row',
-                          justifyContent:'center',
-                          alignItems:'center',
-                          gap:10,
-                        }}>
-                        <View style={{
-                          borderRadius:50,
-                          width:50,
-                          height:50,
-                          justifyContent:'center',
-                          alignItems:'center',
-                          backgroundColor:'#FAB1A0'
-                        }}>
-                            <Text style={{
-                              color:'white',
-                              fontSize:20,
-                            }}>IP</Text>
-                        </View>
-                        <Text style={{
-                          fontSize:16,
-                          opacity:0.7
-                        }}>/ {d.ip}</Text>
-                        </View>
-
-                        <TouchableOpacity >
-                        <View style={{
-                          width:105,
-                          flexDirection:'row',
-                          justifyContent:'center',
-                            alignItems:'center',
-                            height:40,
-                            borderRadius:10,
-                            backgroundColor:'#6750A4',
-                            gap:7,
-                            opacity:0.9
-                          }}>
-                            <Ionicons name="send" size={18} color="white" />
-                            <Text style={{
-                              color:'white',
-                              fontSize:13,
-                            }}>Connect</Text>
-                        </View>
-                        </TouchableOpacity>
-                    </View>
-                   )
-                })}
-            </ScrollView>
-        </View>
-        <View style={{
-          marginTop:15,
+          marginTop:10,
         }}>
             <Text style={{
               fontWeight:'bold',
               fontSize:25,
             }}>Connect Via Device</Text>
             <Text style={{
-              opacity:0.5
+              opacity:0.5,
+              marginBottom:5,
             }}>Please input fields to connect</Text>
         <View style={{
             marginTop:10,
             gap:5,
+            
           }}>
 
       <TextInput
@@ -301,14 +227,21 @@ const ipData = [
         justifyContent:'center',
         alignItems:'center',
         borderRadius:5,
+        flexDirection:'row',
+        gap:10,
       }} onPress={handleSubmitAuth}>
+        {click &&   <ActivityIndicator animating={true} color='white' size={24} style={{
+              opacity:0.8,
+              position:'relative',
+              left:0,
+          }}/>}
         <Text
         style={{
           color:'white',
           fontSize:15,
           fontWeight:'bold'
         }} 
-        >CONNECT</Text>
+        >{click ? 'PLEASE WAIT...': 'CONNECT'}</Text>
       </TouchableOpacity>
         </View>
         </View>

@@ -1,13 +1,12 @@
-import { View, Text, ImageBackground , ActivityIndicator, Keyboard} from 'react-native'
-import React, { useEffect, useState } from 'react'
+import { View, Text, ImageBackground , ActivityIndicator, Keyboard, TouchableOpacity} from 'react-native'
+import React, { useEffect, useMemo, useState } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { TextInput } from 'react-native-paper';
-import { TouchableOpacity } from 'react-native-gesture-handler';
 import { AntDesign } from '@expo/vector-icons';
 import { Entypo } from '@expo/vector-icons';
 import { useDrawerStatus } from '@react-navigation/drawer';
 import { Ionicons } from '@expo/vector-icons';
-import { collection,getFirestore, doc, updateDoc, addDoc, getDocs} from "firebase/firestore"; 
+import { collection,getFirestore, doc, updateDoc, addDoc, getDocs, serverTimestamp, query, orderBy, onSnapshot, getDoc} from "firebase/firestore"; 
 import app from './firebase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Modal from "react-native-modal";
@@ -24,18 +23,109 @@ const Reports = ({navigation}) => {
   const [message, setMessage] = useState('');
   const [deviceName, setDeviceName] = useState('');
   const [visible, setVisible] = useState(false);
+  const [openMessage, setOpenMessage] = useState(false);
   const [data, setData] = useState({})
+  const [messageSend, setSendMessage] = useState('');
+  const [messageData, setDataMessage] = useState([]);
+  const [userImage, setUserImage] = useState('');
+  const [userName, setUserName] = useState('');
+
+
 
   const getUserData = async () => {
     const jsonValue = await AsyncStorage.getItem('Credentials');
     const credential = JSON.parse(jsonValue);
     setDeviceName(credential.DeviceName);
     setData(credential)
+
+    const docRef = doc(db, "users", credential.userId);
+    const docSnap = await getDoc(docRef);
+
+    if (docSnap.exists()) {
+      setUserImage(docSnap.data().image);
+      setUserName(docSnap.data().username);
+    } 
+
   }
 
   useEffect(()=> {
     getUserData();
   },[])
+
+  useEffect(()=> {
+    const q = query(collection(db, "Messages"), orderBy("createdAt", "desc"));
+    onSnapshot(q, (querySnapshot) => {
+   const data = [];
+   querySnapshot.forEach((docs) => {
+       data.push({dt:docs.data(), id: docs.id});
+    
+   });
+
+   setDataMessage(data);
+ });
+   
+ 
+  }, [])
+
+
+  
+
+
+
+
+  const handleSendMessage = async () => {
+
+    const initialMessage = [
+      {
+        message: messageSend,
+        username: userName,
+        image: userImage,
+        type: 'User',
+        messagedate: new Date(),
+      }
+    ]
+
+
+
+
+    const message = {
+      deviceName: deviceName.trim(),
+      sender: data.email,
+      message:initialMessage,
+      createdAt: serverTimestamp(),
+    }
+
+
+    
+    const dts = messageData.find((d) => d.dt.deviceName === deviceName && d.dt.sender === data.email);
+    
+    if(!dts){
+      addDoc(collection(db, "Messages"),message)
+      .then((docs)=> {
+        if(docs.id){
+          setSendMessage('')
+          console.log('send new message success')
+        }
+      });
+
+      return;
+    }
+        
+        const currentMessage  = dts.dt.message || [];
+        const updatedMessages = [...currentMessage, ...initialMessage];
+        const docRef = doc(db, 'Messages', dts.id);
+        updateDoc(docRef, {
+          message:updatedMessages,
+       }).then(()=>{
+         setSendMessage('')
+         console.log('update send message success')
+       });
+
+
+       return;
+
+    
+  }
 
   handleGoHome = () => {
     navigation.navigate('Homepage',
@@ -65,7 +155,7 @@ const Reports = ({navigation}) => {
       createdAt: new Date(),
    }
    
-   const querySnapshot = await getDocs(collection(db, "Reports"));
+    const querySnapshot = await getDocs(collection(db, "Reports"));
       querySnapshot.forEach((docs) => {
       if(docs.data().DeviceName === deviceName) {
        
@@ -110,7 +200,7 @@ const Reports = ({navigation}) => {
 
       return;
     
-  })
+    })
 
 
  
@@ -123,6 +213,19 @@ const Reports = ({navigation}) => {
   const handleOpenDrawer = () => {
     navigation.openDrawer();
   }
+
+
+  const dataMessage = (m) => {
+    
+    return m.find(d => d?.dt.sender === data.email);
+
+  }
+
+ 
+
+
+  const dMessage = useMemo(()=> dataMessage(messageData), [messageData]);
+
   
   return (
 
@@ -266,7 +369,7 @@ const Reports = ({navigation}) => {
       alignItems: 'center',
        borderRadius: 50,
       backgroundColor: '#FAB1A0',
-     }}>
+     }} onPress={()=> setOpenMessage(true)}>
      <AntDesign name="message1" size={27} color="white" />
      </TouchableOpacity>
 
@@ -314,7 +417,7 @@ const Reports = ({navigation}) => {
         </View>
       </Modal>
 
-      <Modal isVisible={true} animationIn='slideInLeft'>
+      <Modal isVisible={openMessage} animationIn='slideInLeft'>
        <View style={{
         flex:1,
         backgroundColor:'white',
@@ -335,7 +438,7 @@ const Reports = ({navigation}) => {
             fontSize:25,
             fontWeight:'bold'
           }}>|</Text> Message</Text>
-          <TouchableOpacity onPress={()=> setVisible(false)}>
+          <TouchableOpacity onPress={()=> setOpenMessage(false)}>
           <AntDesign name="close" size={24} color="red" />    
           </TouchableOpacity>
           </View>
@@ -346,24 +449,46 @@ const Reports = ({navigation}) => {
             marginBottom:10,
             padding:10,
           }}>
-            <View style={{
-              flexDirection:'row',
-              alignSelf:'flex-start',
-              alignItems:'center',
-              gap:10,
-            }}>
-              <Avatar.Image size={40} source={require('../assets/petss.png')} />
-              <View>
-                <Text style={{
-                  fontSize:13,
-                  opacity:0.6,
-                }}>Admin / 10:23 pm : 10/20/30</Text>
-                <Text style={{
-                  fontWeight:'bold',
-                  fontSize:17,
-                }}>What can i do for you?</Text>
-              </View>
-            </View>
+            {!dMessage && (
+              <Text style={{
+                opacity:0.5,
+              }}>No message found!</Text>
+            )}
+            {dMessage && dMessage?.dt.message.map((data, i) => {
+               return (
+                <View style={{
+                  flexDirection:'row',
+                  alignSelf:'Sender' ? 'flex-end': 'flex-start',
+                  alignItems:'center',
+                  gap:10,
+                  marginVertical:10,
+                
+                
+                }} key={i.toString()}>
+                  <Avatar.Image size={40} source={{uri: data.image}} />
+                  <View>
+                    <Text style={{
+                      fontSize:13,
+                      opacity:0.6,
+                    }}>{data.username} / 10:23 pm : 10/20/30</Text>
+
+                    <View style={{
+                 
+                      width:120, flexDirection:'row'
+                    }}>
+                    <Text style={{
+                      fontWeight:'bold',
+                      fontSize:17,
+                      flexWrap: 'wrap', color:'black', opacity:0.7
+                    }}>{data.message}</Text>
+                    </View>
+
+                 
+                  </View>
+                </View>
+              )
+            })}
+
           </View>
           <View style={{
             flexDirection:'row',
@@ -376,9 +501,9 @@ const Reports = ({navigation}) => {
       mode='outlined'
       placeholder='Message here the admin'
       activeOutlineColor='coral'
-      value={email}
+      value={messageSend}
       onChangeText={(val) => {
-        setEmail(val);
+        setSendMessage(val);
       }}
       multiline
       style={{
@@ -395,7 +520,7 @@ const Reports = ({navigation}) => {
             gap:10,
             marginTop:6,
             borderRadius:5,
-          }}>
+          }} onPress={handleSendMessage}>
           <FontAwesome name="send" size={20} color="white" />
           <Text style={{
             fontWeight:'bold',

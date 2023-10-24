@@ -48,7 +48,7 @@ const Live = ({navigation}) => {
   useEffect(()=> {
 
     
-    const q = query(collection(db, "Task"), where("DeviceName", "==", deviceName));
+    const q = query(collection(db, "Livestream"), where("DeviceName", "==", deviceName));
     onSnapshot(q, (snapshot) => {
   snapshot.docChanges().forEach((change) => {
     
@@ -157,17 +157,31 @@ const Live = ({navigation}) => {
   
 
   startVideoLive = async () => {
+
+    const jsonKeyFile =  {
+      "client_id":"99238270028-v52qcsanbcn59aanq0rrf2gckn7nvcpc.apps.googleusercontent.com",
+      "project_id":"purrfectplatectu-20f2a","auth_uri":"https://accounts.google.com/o/oauth2/auth",
+      "token_uri":"https://oauth2.googleapis.com/token",
+      "auth_provider_x509_cert_url":"https://www.googleapis.com/oauth2/v1/certs",
+      "client_secret":"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",
+      "redirect_uris":["http://localhost"]
+  }
     setloading(true)
     const request = {
-      DeviceName:deviceName,
+      DeviceName:deviceName.trim(),
       Youtube_Url:'',
       isliveNow: false,
-      RecordedFile:'',
-      isRecordNow:false,
+      jsonKeyFile,
     }
 
-    const docRef = await addDoc(collection(db, "Task"),request);
+    const docRef = await addDoc(collection(db, "Livestream"),request);
     if(docRef.id) {
+      await addDoc(collection(db, "Task"),{
+        type:'Livestream',
+        deviceName:deviceName.trim(),
+        id: docRef.id,
+        request:'Start',
+      });
       console.log('Sending request to live video!');
       const jsonValue = await AsyncStorage.getItem('Credentials');
       const credential = JSON.parse(jsonValue);
@@ -192,12 +206,12 @@ const Live = ({navigation}) => {
       setUserData(credential)
 
 
-      const q = collection(db, "Task");
+      const q = collection(db, "Livestream");
       onSnapshot(q, (snapshot) => {
      snapshot.docChanges().forEach((change) => {  
       const {DeviceName,Youtube_Url, isliveNow } = change.doc.data()
  
-      if(DeviceName.trim() == credential.DeviceName.trim() && isliveNow == true){
+      if(DeviceName == credential.DeviceName.trim() && isliveNow == true){
         setMessage('Do you want to continue watching the live?');
         setPrompt(true);
         setVisible(false);
@@ -284,38 +298,24 @@ const Live = ({navigation}) => {
     );
     const uri = recording.getURI();
     console.log('Recording stopped and stored at', uri);
- 
 
-    const querySnapshot = await getDocs(collection(db, "Task"));
+   
+    const request = {
+      DeviceName:deviceName.trim(),
+      RecordingFile:uri,
+      response: false,
+    }
 
-      querySnapshot.forEach((docs) => {
-
-        const {DeviceName, isRecordNow} = docs.data();
-
-        if(DeviceName.trim() === deviceName.trim() && isRecordNow === true){
-        
-          const docRef = doc(db, 'Task', docs.id);
-          updateDoc(docRef, {
-            RecordedFile:uri,
-        });
-
-          return;
-        }
-
-       
-
-        const docRef1 = doc(db, 'Task', docs.id);
-        updateDoc(docRef1, {
-          RecordedFile:uri,
-          isRecordNow:true,
+    const docRef = await addDoc(collection(db, "Speak_To_Device"),request);
+    if(docRef.id) {
+      await addDoc(collection(db, "Task"),{
+        type:'Speak_to_pet',
+        deviceName: deviceName.trim(),
+        id: docRef.id,
+        request:null,
       });
-       
-    
-    })
-
+    }
   
-    
-
   }
 
 

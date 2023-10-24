@@ -16,6 +16,9 @@ import {  AlertNotificationRoot, ALERT_TYPE, Dialog } from 'react-native-alert-n
 import Modal from 'react-native-modal';
 import {Image} from 'expo-image'
 import PetListSched from './components/PetListSched';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+
 
 
 const db  = getFirestore(app);
@@ -38,6 +41,7 @@ const Schedule = ({navigation}) => {
   const [show, setShow] = useState(false);
   const [showModal, setModal] = useState(false);
   const [petSchesData, setPetSchedDataset] = useState([]);
+  const [deviceName, setDeviceName] = useState('');
 
   const [company, setComapny] = useState([]);
   
@@ -91,6 +95,17 @@ const Schedule = ({navigation}) => {
    getSchedule(petNameVal);
   }
 
+  const getUserData = async () => {
+    const jsonValue = await AsyncStorage.getItem('Credentials');
+    const credential = JSON.parse(jsonValue);
+    setDeviceName(credential.DeviceName.trim());
+  }
+
+  useEffect(()=> {
+    getUserData();
+  },[])
+
+
 
   handleSetPetSched = async () => {
     const petSchedule = {
@@ -123,6 +138,12 @@ const Schedule = ({navigation}) => {
         setVisible(false);
         setDay('Mon');
         setFoodItems([])
+        await addDoc(collection(db, "Task"),{
+          type:'Schedule',
+          deviceName: deviceName,
+          id: null,
+          request:null,
+        });
         Dialog.show({
           type: ALERT_TYPE.SUCCESS,
           title: 'SUCCESS',

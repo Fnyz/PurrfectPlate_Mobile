@@ -40,12 +40,12 @@ const LoginSignUp = ({route, navigation}) => {
   getPhoneId = async () => {
       
     if (Platform.OS === 'android') {
-    const AndriodId =  Device.deviceName.split(' ').join('').toLowerCase().trim() + Application.androidId.trim();
+    const AndriodId =  Device.deviceName?.split(' ').join('').toLowerCase().trim() + Application.androidId.trim();
     setDeviceId(AndriodId);
     } else if (Platform.OS === 'ios') {
       const iosId = await Application.getIosIdForVendorAsync()
       iosId.then(id => {
-        const iosId = Device.deviceName.split(' ').join('').toLowerCase().trim() + id.trim();
+        const iosId = Device.deviceName?.split(' ').join('').toLowerCase().trim() + id.trim();
         setDeviceId(iosId)
       })
     }

@@ -10,7 +10,7 @@ import { Feather } from '@expo/vector-icons';
 import { FontAwesome } from '@expo/vector-icons';
 import { useDrawerStatus } from '@react-navigation/drawer';
 import * as ImagePicker from 'expo-image-picker';
-import { collection, addDoc, getFirestore, query, onSnapshot } from "firebase/firestore";
+import { collection, addDoc, getFirestore, query, onSnapshot, serverTimestamp } from "firebase/firestore";
 import app from './firebase';
 import Modal from "react-native-modal";
 import {Image} from 'expo-image'
@@ -218,6 +218,8 @@ const AddPets= ({navigation}) => {
     getUserData();
   },[])
 
+  
+
 
 
   
@@ -332,18 +334,31 @@ const AddPets= ({navigation}) => {
      const res = datas.find(d => d?.Petname.toLowerCase().trim() === petName.toLowerCase().trim() && d?.DeviceName.toLowerCase().trim() === deviceName.toLowerCase().trim());
     
      if(!res){
-      const docRef = await addDoc(collection(db, "List_of_Pets"), {
-        DeviceName:deviceName,
+      
+      const addListPet = addDoc(collection(db, "List_of_Pets"), {
+        DeviceName:deviceName.trim(),
         Petname: petName,
         Gender,
         Rfid,
         Weight,
         GoalWeight,
         Age,
-        image
+        image,
+        synce:false,
+        Created_at: serverTimestamp(),
+        Updated_at: serverTimestamp(),
       });
 
-      if(docRef.id){
+      const addTask = addDoc(collection(db, "Task"), {
+        type:'refresh_pet',
+        deviceName:deviceName.trim(),
+        id:null,
+        request:null,
+      });
+
+      const result  = await Promise.all([addListPet, addTask]);
+
+      if(result){
         setShow(false);
         setPetname('');
         setGender('');

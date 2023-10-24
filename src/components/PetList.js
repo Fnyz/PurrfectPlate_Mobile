@@ -17,13 +17,13 @@ const PetList = ({navigation, dt, id}) => {
     }}>
         <View style={{
             overflow:'hidden',
-            height:100,
+            height:150,
             borderRadius:5,
         }}>
         <Image
         style={{
-          width:150,
-          height:100,
+          width:'100%',
+          height:150,
           opacity:0.9,
           objectFit:'contain'
         }}
@@ -97,6 +97,7 @@ const PetList = ({navigation, dt, id}) => {
       })}>
       <MaterialCommunityIcons name="view-list" size={45} color="white" />
       </TouchableOpacity>
+   
       </View>
     
     </View>
