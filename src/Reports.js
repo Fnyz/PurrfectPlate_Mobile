@@ -14,6 +14,7 @@ import {Image} from 'expo-image'
 import { ALERT_TYPE, Dialog, AlertNotificationRoot } from 'react-native-alert-notification';
 import { FontAwesome } from '@expo/vector-icons';
 import { Avatar } from 'react-native-paper';
+import moment from 'moment';
 const db = getFirestore(app);
 
 const Reports = ({navigation}) => {
@@ -462,6 +463,8 @@ const Reports = ({navigation}) => {
                   alignItems:'center',
                   gap:10,
                   marginVertical:10,
+                  width:220,
+                 
                 
                 
                 }} key={i.toString()}>
@@ -470,8 +473,11 @@ const Reports = ({navigation}) => {
                     <Text style={{
                       fontSize:13,
                       opacity:0.6,
-                    }}>{data.username} / 10:23 pm : 10/20/30</Text>
-
+                    }}>{data.username} / {moment(data.messagedate.toDate()).calendar()}
+                    </Text>
+                    <Text style={{
+                      opacity:0.5
+                    }}>{moment(data.messagedate.toDate()).format('L')}</Text>
                     <View style={{
                  
                       width:120, flexDirection:'row'
@@ -479,7 +485,8 @@ const Reports = ({navigation}) => {
                     <Text style={{
                       fontWeight:'bold',
                       fontSize:17,
-                      flexWrap: 'wrap', color:'black', opacity:0.7
+                      flexWrap: 'wrap', color:'black', opacity:0.7,
+                      marginTop:5,
                     }}>{data.message}</Text>
                     </View>
 

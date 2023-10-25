@@ -335,7 +335,7 @@ const AddPets= ({navigation}) => {
     
      if(!res){
       
-      const addListPet = addDoc(collection(db, "List_of_Pets"), {
+      const addListPet = await addDoc(collection(db, "List_of_Pets"), {
         DeviceName:deviceName.trim(),
         Petname: petName,
         Gender,
@@ -344,21 +344,18 @@ const AddPets= ({navigation}) => {
         GoalWeight,
         Age,
         image,
-        synce:false,
+        synced:false,
         Created_at: serverTimestamp(),
         Updated_at: serverTimestamp(),
       });
 
-      const addTask = addDoc(collection(db, "Task"), {
-        type:'refresh_pet',
-        deviceName:deviceName.trim(),
-        id:null,
-        request:null,
-      });
-
-      const result  = await Promise.all([addListPet, addTask]);
-
-      if(result){
+      if(addListPet.id){
+        await addDoc(collection(db, "Task"), {
+          type:'refresh_pet',
+          deviceName:deviceName.trim(),
+          document_id:addListPet.id,
+          request:null,
+        });
         setShow(false);
         setPetname('');
         setGender('');
@@ -373,6 +370,7 @@ const AddPets= ({navigation}) => {
           button: 'close',
         })
       }
+
       return;
      }
 

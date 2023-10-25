@@ -12,6 +12,7 @@ import Modal from "react-native-modal";
 import { ALERT_TYPE, Dialog, AlertNotificationRoot } from 'react-native-alert-notification';
 import {useForm, Controller} from 'react-hook-form';
 import DropDownPicker from "react-native-dropdown-picker";
+import moment from 'moment';
 
 
 
@@ -48,6 +49,7 @@ const DetailsPage = ({route, navigation}) => {
   const onGenderOpen = useCallback(() => {
 
   }, []);
+
 
  
 
@@ -229,7 +231,7 @@ const DetailsPage = ({route, navigation}) => {
       label="Date Added"
       mode='outlined'
       activeOutlineColor='coral'
-      value={date}
+      value={moment(date.toDate()).calendar()}
       disabled
     />
 

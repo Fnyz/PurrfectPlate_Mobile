@@ -74,11 +74,11 @@ const Live = ({navigation}) => {
 
     setLoading2(true);
     if(videoEnded){
-      const querySnapshot = await getDocs(collection(db, "Task"));
+      const querySnapshot = await getDocs(collection(db, "Livestream"));
       querySnapshot.forEach((docs) => {
         const {DeviceName} = docs.data();
         if(DeviceName.trim() === deviceName.trim()){
-          deleteDoc(doc(db, "Task", docs.id));
+          deleteDoc(doc(db, "Livestream", docs.id));
           setMessage('Please wait to exit.');
           setYoutubeId('');
           setTimeout(() => {
@@ -122,7 +122,7 @@ const Live = ({navigation}) => {
 
     if(videoEnded){
       setYoutubeId('');
-      const q = query(collection(db, "Task"), where("DeviceName", "==", deviceName));
+      const q = query(collection(db, "Livestream"), where("DeviceName", "==", deviceName));
       const unsubscribe = onSnapshot(q, (snapshot) => {
      snapshot.docChanges().forEach((change) => {  
            const youId = extractYouTubeVideoId(change.doc.data().Youtube_Url);
@@ -159,13 +159,14 @@ const Live = ({navigation}) => {
   startVideoLive = async () => {
 
     const jsonKeyFile =  {
-      "client_id":"99238270028-v52qcsanbcn59aanq0rrf2gckn7nvcpc.apps.googleusercontent.com",
-      "project_id":"purrfectplatectu-20f2a","auth_uri":"https://accounts.google.com/o/oauth2/auth",
+      "client_id":"85076363562-calnoh5d29tju3sohoucghqqiij0np0o.apps.googleusercontent.com",
+      "project_id":"norse-habitat-403110",
+      "auth_uri":"https://accounts.google.com/o/oauth2/auth",
       "token_uri":"https://oauth2.googleapis.com/token",
       "auth_provider_x509_cert_url":"https://www.googleapis.com/oauth2/v1/certs",
-      "client_secret":"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",
-      "redirect_uris":["http://localhost"]
-  }
+      "client_secret":"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","redirect_uris":["http://localhost"]
+    }
+
     setloading(true)
     const request = {
       DeviceName:deviceName.trim(),
@@ -179,7 +180,7 @@ const Live = ({navigation}) => {
       await addDoc(collection(db, "Task"),{
         type:'Livestream',
         deviceName:deviceName.trim(),
-        id: docRef.id,
+        document_id: docRef.id,
         request:'Start',
       });
       console.log('Sending request to live video!');
@@ -197,6 +198,7 @@ const Live = ({navigation}) => {
   const getData = async () => {
    
     try {
+      
       setVisible(true);
       setMessage('Hello, do you want to watch the live video?');
       const jsonValue = await AsyncStorage.getItem('Credentials');
@@ -208,8 +210,14 @@ const Live = ({navigation}) => {
 
       const q = collection(db, "Livestream");
       onSnapshot(q, (snapshot) => {
-     snapshot.docChanges().forEach((change) => {  
+     snapshot.docChanges().forEach((change) => {
       const {DeviceName,Youtube_Url, isliveNow } = change.doc.data()
+
+      if(!Youtube_Url){
+        setloading(true);
+        setMessage('Please wait a minute to see the live?');
+        return;
+      }
  
       if(DeviceName == credential.DeviceName.trim() && isliveNow == true){
         setMessage('Do you want to continue watching the live?');
@@ -234,7 +242,7 @@ const Live = ({navigation}) => {
   useEffect(()=> {
   
     getData();
-    setMessage('Hello, do you want to watch the live video.')
+    setMessage('Hello, do you want to watch the live video?')
 
     return () => {
       setVisible(true);
@@ -311,7 +319,7 @@ const Live = ({navigation}) => {
       await addDoc(collection(db, "Task"),{
         type:'Speak_to_pet',
         deviceName: deviceName.trim(),
-        id: docRef.id,
+        document_id: docRef.id,
         request:null,
       });
     }
@@ -541,7 +549,7 @@ const Live = ({navigation}) => {
               borderTopLeftRadius:10,
               borderBottomLeftRadius:10,
               backgroundColor:'#FAB1A0'
-            }} onPress={startVideoLive}>
+            }} disabled={load? true: false} onPress={startVideoLive}>
               {load ?
               <View style={{
                 flexDirection:'row',

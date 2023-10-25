@@ -112,7 +112,7 @@ const Schedule = ({navigation}) => {
       Petname: petNameVal,
       Days: day,
       ScheduleTime: foodItems,
-      createdAt: new Date(),
+      synced:false,
     }
 
     setVisible(true);
@@ -141,7 +141,7 @@ const Schedule = ({navigation}) => {
         await addDoc(collection(db, "Task"),{
           type:'Schedule',
           deviceName: deviceName,
-          id: null,
+          document_id: docRef.id,
           request:null,
         });
         Dialog.show({

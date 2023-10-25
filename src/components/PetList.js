@@ -5,7 +5,8 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 const PetList = ({navigation, dt, id}) => {
 
-  const {image,Petname, Weight, Gender, Age, DeviceName, GoalWeight} = dt
+  const {image,Petname, Weight, Gender, Age, DeviceName, GoalWeight, Created_at} = dt
+
 
   return (
     <View style={{
@@ -92,7 +93,7 @@ const PetList = ({navigation, dt, id}) => {
         Petname,
         DeviceName,
         GoalWeight,
-        date:'Today at 5 hours ago.',
+        date:Created_at,
         id:id
       })}>
       <MaterialCommunityIcons name="view-list" size={45} color="white" />
