@@ -20,7 +20,6 @@ import ListPet from './components/ListPet';
 
 
 
-
 const db = getFirestore(app);
 const auth = getAuth(app);
 

@@ -5,10 +5,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { TextInput } from 'react-native-paper';
 import { getAuth, signOut } from "firebase/auth";
 import app from './firebase';
-import {collection, getFirestore, getDocs } from 'firebase/firestore';
+import {collection, getFirestore, getDocs, query, onSnapshot } from 'firebase/firestore';
 import { ALERT_TYPE, Dialog, AlertNotificationRoot } from 'react-native-alert-notification';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
+import CryptoJS from "react-native-crypto-js";
 
 
 
@@ -23,7 +23,69 @@ const ConnectDevice = ({navigation, route : {params}}) => {
 
   const [deviceName, setDeviceName] = useState('');
   const [password, setPassword] = useState('');
+  const [data, setUserData] = useState({});
+  const [deviceList, setDeviceList] = useState([]);
+  const [email, setEmail] = useState('');
+  const [show, setShow] = useState(false);
+  const [listUser, setUserList] = useState([]);
+
   const [click, setClick] = useState(false);
+
+
+
+
+
+
+
+   
+  const getListUser = () => {
+    const q = query(collection(db, "users"));
+   onSnapshot(q, (querySnapshot) => {
+  const dt = [];
+  querySnapshot.forEach((doc) => {
+      dt.push({data:doc.data(), id:doc.id});
+  });
+  setUserList(dt);
+
+});
+
+  }
+
+
+
+
+
+
+  
+  const getListDevice = () => {
+    
+    const q = query(collection(db, "Device_Authorization"));
+   onSnapshot(q, async (querySnapshot) => {
+  const dt = [];
+  querySnapshot.forEach((doc) => {
+      dt.push({data:doc.data(), id:doc.id});
+  });
+      setDeviceList(dt);
+      const res = dt.find(d => d.data.Email === params.email);
+      setDeviceName(res.data.DeviceName);
+   });
+
+  }
+
+
+
+
+  useEffect(()=>{
+    getListDevice();
+    getListUser();
+  },[])
+
+
+
+
+
+
+
 
 
 
@@ -62,11 +124,17 @@ const ConnectDevice = ({navigation, route : {params}}) => {
         Dialog.show({
           type: ALERT_TYPE.DANGER,
           title: 'Oppps.',
-          textBody: 'Password must be at least 6 characters long!',
+          textBody: 'Password must be at least 4 to 6 characters long!',
           button: 'close',
         })
         return;
       }
+
+
+      const res = deviceList.find(d => d.data.Email === data.email && d.data.DeviceName.trim() === deviceName.trim())
+
+
+      
 
       const querySnapshot = await getDocs(collection(db, "Device_Authorization"));
      querySnapshot.forEach((doc) => {
@@ -203,6 +271,7 @@ const ConnectDevice = ({navigation, route : {params}}) => {
       activeOutlineColor='coral'
       value={deviceName}
       onChangeText={(val) =>  setDeviceName(val)}
+      disabled
       style={{
         opacity:0.8
       }}

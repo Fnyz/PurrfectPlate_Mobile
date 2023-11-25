@@ -20,7 +20,7 @@ const db = getFirestore(app);
 const Reports = ({navigation}) => {
 
   const [email, setEmail] = useState('');
-  const [username, setUsername] = useState('');
+
   const [message, setMessage] = useState('');
   const [deviceName, setDeviceName] = useState('');
   const [visible, setVisible] = useState(false);
@@ -45,6 +45,7 @@ const Reports = ({navigation}) => {
     if (docSnap.exists()) {
       setUserImage(docSnap.data().image);
       setUserName(docSnap.data().username);
+      setEmail(docSnap.data().email);
     } 
 
   }
@@ -151,7 +152,7 @@ const Reports = ({navigation}) => {
     const reports = {
       DeviceName: deviceName,
       Email:email,
-      Username: username,
+      Username: userName,
       Message:initialMessages,
       createdAt: new Date(),
    }
@@ -159,7 +160,6 @@ const Reports = ({navigation}) => {
     const querySnapshot = await getDocs(collection(db, "Reports"));
       querySnapshot.forEach((docs) => {
       if(docs.data().DeviceName === deviceName) {
-       
         const currentMessage  = docs.data().Message || [];
         const updatedMessages = [...currentMessage, ...initialMessages];
         const docRef = doc(db, 'Reports', docs.id);
@@ -168,7 +168,7 @@ const Reports = ({navigation}) => {
        }).then(()=>{
          setEmail('');
          setMessage('');
-         setUsername('');
+         setUserName('');
          Dialog.show({
           type: ALERT_TYPE.SUCCESS,
           title: 'SUCCESS',
@@ -188,7 +188,7 @@ const Reports = ({navigation}) => {
        
           setEmail('');
           setMessage('');
-          setUsername('');
+          setUserName('');
           Dialog.show({
             type: ALERT_TYPE.SUCCESS,
             title: 'SUCCESS',
@@ -202,6 +202,7 @@ const Reports = ({navigation}) => {
       return;
     
     })
+    
 
 
  
@@ -302,9 +303,9 @@ const Reports = ({navigation}) => {
       label="Username"
       mode='outlined'
       activeOutlineColor='coral'
-      value={username}
+      value={userName}
       onChangeText={(val) => {
-        setUsername(val);
+        setUserName(val);
       }}
     />
         <TextInput
