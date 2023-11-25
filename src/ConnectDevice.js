@@ -5,10 +5,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { TextInput } from 'react-native-paper';
 import { getAuth, signOut } from "firebase/auth";
 import app from './firebase';
-import {collection, getFirestore, getDocs, query, onSnapshot } from 'firebase/firestore';
+import {collection, getFirestore, query, onSnapshot, updateDoc, doc, where} from 'firebase/firestore';
 import { ALERT_TYPE, Dialog, AlertNotificationRoot } from 'react-native-alert-notification';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import CryptoJS from "react-native-crypto-js";
+import CryptoJS from 'crypto-js';
+import Modal from "react-native-modal";
 
 
 
@@ -23,13 +24,12 @@ const ConnectDevice = ({navigation, route : {params}}) => {
 
   const [deviceName, setDeviceName] = useState('');
   const [password, setPassword] = useState('');
-  const [data, setUserData] = useState({});
   const [deviceList, setDeviceList] = useState([]);
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(params.email);
   const [show, setShow] = useState(false);
   const [listUser, setUserList] = useState([]);
-
   const [click, setClick] = useState(false);
+  const [visible, setVisible] = useState(false);
 
 
 
@@ -67,7 +67,12 @@ const ConnectDevice = ({navigation, route : {params}}) => {
   });
       setDeviceList(dt);
       const res = dt.find(d => d.data.Email === params.email);
-      setDeviceName(res.data.DeviceName);
+      if(!res) {
+        setShow(true); 
+        return;
+      };
+      setDeviceName(res?.data.DeviceName);
+      
    });
 
   }
@@ -94,6 +99,8 @@ const ConnectDevice = ({navigation, route : {params}}) => {
 
     Keyboard.dismiss();
     setClick(true);
+   
+   
 
    
 
@@ -111,7 +118,7 @@ const ConnectDevice = ({navigation, route : {params}}) => {
         Dialog.show({
           type: ALERT_TYPE.DANGER,
           title: 'Oppps.',
-          textBody: 'Please input all fields!',
+          textBody: 'Please input all the password!',
           button: 'close',
         })
   
@@ -131,46 +138,49 @@ const ConnectDevice = ({navigation, route : {params}}) => {
       }
 
 
-      const res = deviceList.find(d => d.data.Email === data.email && d.data.DeviceName.trim() === deviceName.trim())
+      const res = deviceList.find(d => d.data.Email === params.email && d.data.DeviceName.trim() === deviceName.trim())
+ 
+var hashPass = CryptoJS.SHA256(password, '').toString();
+   
 
-
-      
-
-      const querySnapshot = await getDocs(collection(db, "Device_Authorization"));
-     querySnapshot.forEach((doc) => {
-  
-     
-
-      const {email, DeviceName, password: pass } = doc.data();
-
-      if(password !== pass) {
+      if(!res){
         setClick(false);
         Dialog.show({
           type: ALERT_TYPE.DANGER,
           title: 'Oppps.',
-          textBody: 'Password is incorrect, please try again.',
+          textBody: 'Email is dont have a device',
           button: 'close',
         })
-        setPassword('');
+         
         return;
       }
 
-
-      if(email.toLowerCase().trim() !== credentials.email.toLowerCase().trim() || DeviceName.toLowerCase().trim() !==  deviceName.toLowerCase().trim()) {
+     
+      if(res.data.Password.trim() !== hashPass.trim() || res.data.Email !== params.email) {
         setClick(false);
-        Dialog.show({
-          type: ALERT_TYPE.DANGER,
-          title: 'Oppps.',
-          textBody: 'Device not registered!',
-          button: 'close',
-        })
-
+                Dialog.show({
+                  type: ALERT_TYPE.DANGER,
+                  title: 'Oppps.',
+                  textBody: 'Invalid Credentials, please try again!.',
+                  button: 'close',
+                })
+                setPassword('');
+                return;
+        
       }
 
 
+      if(res.data.Password.trim() === hashPass.trim() && res.data.Email === params.email) {
+        const a = listUser.find(d => d.data.email === res.data.Email);
+       
+        if(!a) return;
 
-      if(email.toLowerCase().trim() === credentials.email.toLowerCase().trim() && DeviceName.toLowerCase().trim() ===  deviceName.toLowerCase().trim()) {
+        const devicesss = doc(db, "users", a.id);
+        await updateDoc(devicesss, {
+          isActive:true
+        }).then(()=> {
         setClick(false);
+        console.log(a.id);
         const storeData = async () => {
           try {
             await AsyncStorage.setItem('Credentials', JSON.stringify(credentials));
@@ -181,15 +191,18 @@ const ConnectDevice = ({navigation, route : {params}}) => {
         }
         );
           } catch (e) {
-            // saving error
+            
           }
         };
         storeData();
-        
+        })
+       
       }
 
       
-});
+
+  
+
 
 
 
@@ -207,9 +220,45 @@ const ConnectDevice = ({navigation, route : {params}}) => {
    
    }
 
+   const handleNewDevice = async () => {
+    setClick(true);
+    const res = deviceList.find(d => d.data.Email === '' && d.data.Token === 0);
+   
+const devicess = doc(db, "Device_Authorization", res.id);
+
+await updateDoc(devicess, {
+Email: email.trim(),
+Token:1,
+}).then(async()=>{
+
+const q = query(collection(db, "users"), where("email", "==", email.trim()));
+const querySnapshot = await getDocs(q);
+querySnapshot.forEach(async (docss) => {
+ 
+const devicesss = doc(db, "users", docss.id);
+await updateDoc(devicesss, {
+  hasDevice: true,
+  Devicename:res.data.DeviceName,
+}).then(()=> {
+  setClick(false);
+  setDeviceName(res.data.DeviceName);
+  setVisible(false)
+})
+
+});
 
 
-  
+
+});
+ 
+
+  }
+
+
+
+  const handleOpenAddDevice = () => {
+setVisible(true);
+  }
 
     const [secureEntry, setSecureEntry] = useState(true);
 
@@ -258,61 +307,175 @@ const ConnectDevice = ({navigation, route : {params}}) => {
             <Text style={{
               opacity:0.5,
               marginBottom:5,
-            }}>Please input fields to connect</Text>
-        <View style={{
-            marginTop:10,
-            gap:5,
-            
-          }}>
+            }}>{show ? "Please click the button below to add device.": "Please input fields to connect."}</Text>
+          {!show && (
+  <View style={{
+    marginTop:10,
+    gap:5,
+    
+  }}>
 
-      <TextInput
-      label="Device name"
-      mode='outlined'
-      activeOutlineColor='coral'
-      value={deviceName}
-      onChangeText={(val) =>  setDeviceName(val)}
-      disabled
-      style={{
-        opacity:0.8
-      }}
-      />
-     <TextInput
-      label="Password"
-      mode='outlined'
-      activeOutlineColor='coral'
-      secureTextEntry={secureEntry}
-      value={password}
-      onChangeText={(val) =>  setPassword(val)}
-      right={<TextInput.Icon icon={!secureEntry? 'eye':'eye-off'} onPress={handleChangeOpenPassword} />}
-      style={{
-        marginBottom:10,
-        opacity:0.8
-      }}
-      
-      />
-    <TouchableOpacity style={{
-      height:50,
-        backgroundColor:'#FAB1A0',
-        justifyContent:'center',
-        alignItems:'center',
+<TextInput
+label="Device name"
+mode='outlined'
+activeOutlineColor='coral'
+value={deviceName}
+onChangeText={(val) =>  setDeviceName(val)}
+disabled
+style={{
+opacity:0.8
+}}
+/>
+<TextInput
+label="Password"
+mode='outlined'
+activeOutlineColor='coral'
+secureTextEntry={secureEntry}
+value={password}
+onChangeText={(val) =>  setPassword(val)}
+right={<TextInput.Icon icon={!secureEntry? 'eye':'eye-off'} onPress={handleChangeOpenPassword} />}
+style={{
+marginBottom:10,
+opacity:0.8
+}}
+
+/>
+<TouchableOpacity style={{
+height:50,
+backgroundColor:'#FAB1A0',
+justifyContent:'center',
+alignItems:'center',
+borderRadius:5,
+flexDirection:'row',
+gap:10,
+}} onPress={handleSubmitAuth}>
+{click &&   <ActivityIndicator animating={true} color='white' size={24} style={{
+      opacity:0.8,
+      position:'relative',
+      left:0,
+  }}/>}
+<Text
+style={{
+  color:'white',
+  fontSize:15,
+  fontWeight:'bold'
+}} 
+>{click ? 'PLEASE WAIT...': 'CONNECT'}</Text>
+</TouchableOpacity>
+</View>
+          )}
+
+          {show && (
+            <TouchableOpacity style={{
+              height:50,
+              backgroundColor:'#FAB1A0',
+              justifyContent:'center',
+              alignItems:'center',
+              borderRadius:5,
+              flexDirection:'row',
+              marginTop:10,
+              gap:10,
+              }} onPress={handleOpenAddDevice}>
+              {click &&   <ActivityIndicator animating={true} color='white' size={24} style={{
+                    opacity:0.8,
+                    position:'relative',
+                    left:0,
+                }}/>}
+              <Text
+              style={{
+                color:'white',
+                fontSize:15,
+                fontWeight:'bold'
+              }} 
+              >{click ? 'PLEASE WAIT...': 'ADD DEVICE'}</Text>
+              </TouchableOpacity>
+             
+          )}
+
+<Modal isVisible={visible} animationIn='slideInLeft'>
+        <View style={{ height:"27%",
+        borderColor:'red',
+        marginHorizontal:20,
         borderRadius:5,
         flexDirection:'row',
-        gap:10,
-      }} onPress={handleSubmitAuth}>
-        {click &&   <ActivityIndicator animating={true} color='white' size={24} style={{
-              opacity:0.8,
-              position:'relative',
-              left:0,
-          }}/>}
-        <Text
-        style={{
-          color:'white',
-          fontSize:15,
-          fontWeight:'bold'
-        }} 
-        >{click ? 'PLEASE WAIT...': 'CONNECT'}</Text>
-      </TouchableOpacity>
+        justifyContent:'center',
+        paddingVertical:20,
+        backgroundColor:'rgba(0,0,0,0.9)',
+        gap:5,
+        position:'relative'
+        }}>
+         
+       
+
+            <View style={{
+              width:'100%',
+              paddingHorizontal:20,
+            }}>
+              <View style={{
+                flexDirection:'row',
+                justifyContent:"space-between",
+                alignItems:'center'
+              }}>
+              <Text style={{
+                color:'white', 
+                fontSize:20,
+                fontWeight:"bold",
+                opacity:0.8
+              }}>Bind Device</Text>
+              <TouchableOpacity onPress={()=> setVisible(false)}>
+              <Text style={{
+                color:'white', 
+                fontSize:20,
+                fontWeight:"bold",
+                opacity:0.8
+              }}>x</Text>
+              </TouchableOpacity>
+               
+              </View>
+             
+              <Text style={{
+                color:'white',
+                fontSize:15,
+                opacity:0.5
+
+              }}>Please click sumbit to bind a device.</Text>
+              <TextInput
+
+mode='outlined'
+activeOutlineColor='coral'
+value={email}
+disabled
+style={{
+
+marginTop:10,
+}}
+/>
+<TouchableOpacity style={{
+              height:50,
+              backgroundColor:'#FAB1A0',
+              justifyContent:'center',
+              alignItems:'center',
+              borderRadius:5,
+              flexDirection:'row',
+              marginTop:10,
+              gap:10,
+              }} onPress={handleNewDevice}>
+              {click &&   <ActivityIndicator animating={true} color='white' size={24} style={{
+                    position:'relative',
+                    left:0,
+                }}/>}
+              <Text
+              style={{
+                color:'white',
+                fontSize:15,
+                fontWeight:'bold'
+              }} 
+              >{click ? 'PLEASE WAIT...': 'SUBMIT'}</Text>
+              </TouchableOpacity>
+             </View>
         </View>
+      </Modal>
+      
         </View>
       </ImageBackground>
     </SafeAreaView>
