@@ -190,6 +190,7 @@ const AddPets= ({navigation}) => {
   const [show, setShow] = useState(false);
   const [datas, setAllData] = useState([]);
   const [genderOpen, setGenderOpen] = useState(false);
+  const [typeOpen, setTypeOpen] = useState(false);
   const [gender, setGenders] = useState([
     { label: "Male", value: "male" },
     { label: "Female", value: "female" },
@@ -197,13 +198,17 @@ const AddPets= ({navigation}) => {
   ]);
 
   const [visible, setVisible] = useState(false);
-
-
-
   const [loadingRf, setLoad1] = useState(false);
   const [loadingWth, setLoad2] = useState(false);
   const [deviceName, setDeviceName] = useState('');
   const [userData, setUserData] = useState({});
+  const [petType, setPetType] = useState('');
+  const [changeType, setChangeForType] = useState(false);
+  const typePet = [
+    { label: "Dog", value: "dog" },
+    { label: "Cat", value: "cat" },
+    { label: "Specified pet type", value: "specified" },
+  ]
 
 
 
@@ -320,7 +325,7 @@ const AddPets= ({navigation}) => {
     setShow(true);
 
 
-    if(!petName || !Gender || !Rfid || !Weight || !GoalWeight || !Age){
+    if(!petName || !Gender || !Rfid || !Weight || !GoalWeight || !Age || !petType){
       setShow(false)
       Dialog.show({
         type: ALERT_TYPE.DANGER,
@@ -343,6 +348,7 @@ const AddPets= ({navigation}) => {
         Weight,
         GoalWeight,
         Age,
+        petType:petType.toLowerCase().trim(),
         image,
         synced:false,
         Created_at: serverTimestamp(),
@@ -363,6 +369,7 @@ const AddPets= ({navigation}) => {
         setAge('');
         setRfid('');
         setWeight('');
+        setPetType('')
         Dialog.show({
           type: ALERT_TYPE.SUCCESS,
           title: 'SUCCESS',
@@ -387,10 +394,22 @@ const AddPets= ({navigation}) => {
       
   }
 
+  useEffect(()=>{
+    if(petType === "specified"){
+      setChangeForType(true);
+      setPetType("");
+      return;
+    }
+  },[petType])
+
   
 
  
   const onGenderOpen = useCallback(() => {
+
+  }, []);
+
+  const onTypeOpen = useCallback(() => {
 
   }, []);
 
@@ -404,7 +423,7 @@ const AddPets= ({navigation}) => {
     navigation.openDrawer();
   },[navigation])
   
- 
+
   return (
     <AlertNotificationRoot theme='dark'>
 
@@ -450,6 +469,8 @@ const AddPets= ({navigation}) => {
       justifyContent:'center',
       alignItems:'center',
       marginTop:30,
+      width:'100%',
+  
 
     }}>
 <Avatar.Image size={130} source={!image ? require('../assets/Image/dog.png') : {uri: image}}
@@ -477,6 +498,8 @@ const AddPets= ({navigation}) => {
     <View style={{
       marginTop:20,
       gap:5,
+      width:'100%',
+   
     }}>
     <TextInput
       label="Pet name"
@@ -518,6 +541,7 @@ const AddPets= ({navigation}) => {
           </View>
         )}
       />
+
 
     <View style={{
       flexDirection:'row',
@@ -635,7 +659,83 @@ const AddPets= ({navigation}) => {
   
     </TouchableOpacity>
 
+    
+
     </View>
+     {!changeType ? 
+        <Controller
+        name="petType"
+        defaultValue=""
+        control={control}
+        render={({ field: { onChange, value } }) => (
+          <View style={{ 
+            width: "100%",
+            marginTop:5,
+            }}>
+            <DropDownPicker
+              style={{borderColor: "#B7B7B7",
+              height: 50}}
+              open={typeOpen}
+              value={petType} 
+              items={typePet}
+              setOpen={setTypeOpen}
+              setValue={setPetType}
+              placeholder="Select type of pet"
+              placeholderStyle={{
+                color: "grey",
+              }}
+              onOpen={onTypeOpen}
+              onChangeValue={onChange}
+              zIndex={3000}
+              zIndexInverse={1000}
+            />
+          </View>
+        )}
+      />
+    : 
+    <View style={{
+      flexDirection:'row',
+      justifyContent:'center',
+      alignItems:'center',
+      gap:10,
+    }}>
+
+    <TextInput
+      label="Input type of pet here"
+      mode='outlined'
+      activeOutlineColor='coral'
+      style={{
+        width:'76%',
+        opacity:0.7
+      }}
+
+      
+      value={petType}
+      onChangeText={(val) => setPetType(val)} 
+    />
+    <TouchableOpacity style={{
+      elevation:5,
+      backgroundColor:'#FAB1A0',
+      width:'20%',
+      height:50,
+      marginTop:5,
+      justifyContent:'center',
+      alignItems:'center',
+      borderRadius:5,
+      flexDirection:'row',
+      gap:10,
+    }} onPress={()=> setChangeForType(false)}>
+             <AntDesign name="close" size={20} color="white" />
+             
+    </TouchableOpacity>
+
+    
+
+    </View>
+    
+    }
+ 
+
     <TextInput
       label="Goal Weight"
       mode='outlined'

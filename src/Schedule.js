@@ -17,20 +17,21 @@ import Modal from 'react-native-modal';
 import {Image} from 'expo-image'
 import PetListSched from './components/PetListSched';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
+import {Dimensions} from 'react-native';
 
 
 
 const db  = getFirestore(app);
 
-
+const windowWidth = Dimensions.get('window').width;
+const windowHeight = Dimensions.get('window').height;
 
 const Schedule = ({navigation}) => {
 
   
   const [openPetName, setPetOpen] = useState(false);
   const [petNameVal, setPetnameValue] = useState(null);
-  const [day, setDay] = useState('Mon');
+  const [day, setDay] = useState('Everyday');
   const [time, setTime] = useState(new Date());
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [formattedTime, setFormattedTime] = useState('');
@@ -42,8 +43,12 @@ const Schedule = ({navigation}) => {
   const [showModal, setModal] = useState(false);
   const [petSchesData, setPetSchedDataset] = useState([]);
   const [deviceName, setDeviceName] = useState('');
+  const [timeOnly, setTimeOnly] = useState('');
+  const [parameters, setParametes] = useState('');
 
   const [company, setComapny] = useState([]);
+
+
   
   
 
@@ -58,7 +63,7 @@ const Schedule = ({navigation}) => {
    onSnapshot(q, (querySnapshot) => {
   const dt = [];
   querySnapshot.forEach((doc) => {
-      dt.push(doc.data());
+      dt.push({data:doc.data(), id: doc.id});
   });
   
   setPetData(dt);
@@ -111,6 +116,7 @@ const Schedule = ({navigation}) => {
     const petSchedule = {
       Petname: petNameVal,
       Days: day,
+      DeviceName: deviceName.trim(),
       ScheduleTime: foodItems,
       synced:false,
     }
@@ -128,72 +134,54 @@ const Schedule = ({navigation}) => {
       return;
     }
 
-    const res = petData.find(d => d?.Days.toLowerCase().trim() === day.toLowerCase().trim());
 
-    if(!res){
-      const docRef = await addDoc(collection(db, "feeding_schedule"), petSchedule);
+    const res = petData.find(d => d.data.Days.toLowerCase().trim() === day.toLowerCase().trim() && d.data.DeviceName.toLowerCase().trim() === deviceName.toLowerCase().trim());
 
-      if(docRef.id){
-        setPetnameValue('');
-        setVisible(false);
-        setDay('Mon');
-        setFoodItems([])
-        await addDoc(collection(db, "Task"),{
-          type:'Schedule',
-          deviceName: deviceName,
-          document_id: docRef.id,
-          request:null,
-        });
+       if(!res){
+        const docRef = await addDoc(collection(db, "feeding_schedule"), petSchedule);
+        if(docRef.id){
+          setPetnameValue('');
+          setVisible(false);
+          setDay('Everyday');
+          setFoodItems([])
+          await addDoc(collection(db, "Task"),{
+            type:'Schedule',
+            deviceName: deviceName,
+            document_id: docRef.id,
+            request:null,
+          });
+          Dialog.show({
+            type: ALERT_TYPE.SUCCESS,
+            title: 'SUCCESS',
+            textBody: 'Schedule is added successfully.',
+            button: 'close',
+          })
+        }
+        return;
+       }
+
+
+       const currentSched  = res.data.ScheduleTime || [];
+       const updatedSched = [...currentSched, ...foodItems];
+       const docRef = doc(db, 'feeding_schedule', res.id);
+       updateDoc(docRef, {
+         ScheduleTime:updatedSched,
+      }).then(()=>{
         Dialog.show({
           type: ALERT_TYPE.SUCCESS,
           title: 'SUCCESS',
-          textBody: 'Schedule is added successfully.',
+          textBody: 'Schedule on that day is updated successfully.',
           button: 'close',
         })
-      }
-      return;
-     }
-
-     if(res.Days.toLowerCase().trim() === day.toLowerCase().trim()){
-      setFoodItems('');
-      setVisible(false);
-      Dialog.show({
-        type: ALERT_TYPE.DANGER,
-        title: 'Oppps.',
-        textBody: 'Pet schedule is already exists.',
-        button: 'close',
-      })
-     }
+        setPetnameValue('');
+        setVisible(false);
+        setDay('Everyday');
+        setFoodItems([])
+      });
+      return;    
   }
 
-  const addFoodItem = () => {
-    if (!caps|| !formattedTime) {
-      // Prevent adding empty entries
-      return;
-    }
-
-    // Check if the time already exists in the list
-    const existingItem = foodItems.find((item) => item.time.split(' ')[0] === formattedTime.split(' ')[0]);
-    if (existingItem) {
-      // You can handle the duplicate time case here
-      alert(`Time ${formattedTime} already exists. Remove the existing entry first.`);
-      return;
-    }
-
-    // Add the new food item and time to the list
-    setFoodItems([...foodItems, { time: formattedTime.split(' ')[0], cups: caps }]);
-    setCaps('');  
-  };
-
-
-  const removeFoodItem = (selectedTime) => {
-    setFoodItems(foodItems.filter((item) => item.time.split(' ')[0] !== selectedTime));
-  };
-
-
-
-
-
+  
   const onTimeChange = (event, selectedTime) => {
     setShowTimePicker(false);
     if (selectedTime !== undefined) {
@@ -209,20 +197,70 @@ const Schedule = ({navigation}) => {
       // Create the formatted time string
       const formattedTimeString = `${hours}:${minutes.toString().padStart(2, '0')} ${ampm}`;
       setFormattedTime(formattedTimeString);
+      setTimeOnly(formattedTimeString.split(" ")[0]);
+      setParametes(formattedTimeString.split(" ")[1]);
+
+ 
     }
+  };
+
+
+  const addFoodItem = () => {
+    if (!caps|| !formattedTime) {
+      // Prevent adding empty entries
+      return;
+    }
+
+   //trace if that schedule is already exists
+    const res  = petData.find(d => d.data.Days === day.trim() && d.data.DeviceName === deviceName);
+      const exist = res.data.ScheduleTime.find(a => parseInt(a.time) === parseInt(formattedTime.split(" ")[0]) && a.parameters === formattedTime.split(" ")[1] );
+     
+  
+    if(exist){
+    
+          alert(`Time ${formattedTime} already set on the schedule of pet. please choose other time.`);
+          setFormattedTime('');
+          return;
+  
+    }
+
+    // Check if the time already exists in the list
+    const existingItem = foodItems.find((item) => item.time.split(' ')[0] === formattedTime.split(' ')[0]);
+    if (existingItem) {
+      // You can handle the duplicate time case here
+      alert(`Time ${formattedTime} already exists. Remove the existing entry first.`);
+      setFormattedTime("");
+      return;
+    }
+
+    // Add the new food item and time to the list
+    setFoodItems([...foodItems, { time: formattedTime.split(' ')[0], cups: caps, parameters: formattedTime.split(' ')[1].trim() }]);
+    setCaps('');  
+    setFormattedTime('');
+  };
+
+
+  const removeFoodItem = (selectedTime, parameters) => {
+
+    setFoodItems(foodItems.filter((item) => `${item.time} ${item.parameters}` !== `${selectedTime.trim()} ${parameters}`));
+    setFormattedTime("");
   };
 
 
 
 
+
+
+
+
   const days = [
-    {day: 'Mon'},
-    {day: 'Tue'},
-    {day: 'Wed'},
-    {day: 'Thu'},
-    {day: 'Fri'},
-    {day: 'Sat'},
-    {day: 'Sun'},
+    {day: 'Monday'},
+    {day: 'Tuesday'},
+    {day: 'Wednesday'},
+    {day: 'Thursday'},
+    {day: 'Friday'},
+    {day: 'Saturday'},
+    {day: 'Sunday'},
     {day:'Everyday'},
   ]
 
@@ -232,7 +270,7 @@ const Schedule = ({navigation}) => {
   const unsubscribe = onSnapshot(q, (querySnapshot) => {
     const schedDatas = [];
     querySnapshot.forEach((doc) => {
-        schedDatas.push(doc.data());
+        schedDatas.push({data:doc.data(), id:doc.id});
     });
     setPetSchedDataset(schedDatas);
   });
@@ -242,13 +280,13 @@ const Schedule = ({navigation}) => {
   useEffect(()=> {
 
     const isSchedule = () => {
-    const res = petData.find(d => d?.Petname.toLowerCase().trim() === petNameVal.toLowerCase().trim());
-    
+    const res = petData.find(d => d?.data.Petname?.toLowerCase().trim() === petNameVal.toLowerCase().trim());
     if(!res){
       setShow(false);
       return;
     }
     setShow(true);
+    
     }
 
     isSchedule();
@@ -268,7 +306,7 @@ const Schedule = ({navigation}) => {
 
 
 
-
+  
   
 
 
@@ -287,6 +325,7 @@ const Schedule = ({navigation}) => {
         <View style={{
           padding:10,
           height:'100%',
+          width:'100%',          
         }}>
 
           <View style={{
@@ -295,6 +334,7 @@ const Schedule = ({navigation}) => {
             alignItems:'center',
             marginBottom:10,
             marginTop:10,
+            width:'100%',
           }}>
             <Text style={{
               fontSize:30,
@@ -343,6 +383,7 @@ const Schedule = ({navigation}) => {
               style={{
                 borderColor: "#FAB1A0",
                 height: 50,
+                width:'100%'
               }}
               open={openPetName}
               value={petNameVal} //petNameVal
@@ -408,7 +449,7 @@ const Schedule = ({navigation}) => {
               fontWeight:'bold',
               color:'white',
               padding:10,
-            }}>{item.day}</Text>
+            }}>{item.day === "Everyday" ? item.day : item.day.slice(0,3).trim()}</Text>
           </TouchableOpacity>
            )
           }}
@@ -459,7 +500,14 @@ const Schedule = ({navigation}) => {
           )}
         </View>
 
-        <View>
+        <View style={{
+          padding:5,
+          width:'100%',
+          height:windowHeight,
+          alignItems:'center',
+          flexDirection:'column',
+        }}>
+    
       <View style={{
         flexDirection:'row',
         width:'100%',
@@ -467,6 +515,7 @@ const Schedule = ({navigation}) => {
         justifyContent:'center',
         gap:5,
         marginTop:2,
+      
         
       }}>
       <TouchableOpacity style={{
@@ -491,17 +540,17 @@ const Schedule = ({navigation}) => {
         }}>Time</Text>
       </TouchableOpacity> 
       <TextInput
-      label="Input food caps"
+      label="Time selected"
       mode='outlined'
       activeOutlineColor='coral'
       style={{
-        width:'50%',
-        
+        width:'60%',
+        fontWeight:'bold',
       }}
+      disabled
       outlineColor='#FAB1A0'
       selectionColor='#FAB1A0'
-      value={caps}
-      onChangeText={(val)=> setCaps(val)}
+      value={formattedTime}
       /> 
       
       </View>
@@ -517,6 +566,19 @@ const Schedule = ({navigation}) => {
         />
       )}
 
+    <TextInput
+      label="Input food caps"
+      mode='outlined'
+      activeOutlineColor='coral'
+      style={{
+        width:'100%',
+      }}
+      outlineColor='#FAB1A0'
+      selectionColor='#FAB1A0'
+      value={caps}
+      onChangeText={(val)=> setCaps(val)}
+      /> 
+
       <TouchableOpacity style={{
         marginTop:5,
         backgroundColor:'#FAB1A0',
@@ -525,7 +587,7 @@ const Schedule = ({navigation}) => {
         height:40,
         justifyContent:'center',
         alignItems:'center',
-        width:'92%',
+        width:'100%',
         flexDirection:'row',
         alignSelf:'center',
         gap:5
@@ -536,17 +598,14 @@ const Schedule = ({navigation}) => {
               fontSize:15,
             }}>SET TIME & CAPS</Text>
           </TouchableOpacity>
-
-
-    </View>
-        <View style={{
+          <View style={{
           marginTop:10,
           paddingHorizontal:10,
-          height:180,
+          height:'15%',
           borderRadius:5,
           elevation:3,
           backgroundColor:'white',
-          width:'95%',
+          width:'100%',
           alignSelf:'center',
         }}>
         {!foodItems.length ?
@@ -584,7 +643,7 @@ const Schedule = ({navigation}) => {
                 fontSize:17,
                 color:'white'   
               }}>
-                {`${item.time} ${item.time.split(':')[0] >= 12 ? 'PM' : 'AM'}`}
+                {`${item.time} ${item.parameters}`}
               </Text>
               <Text style={{
                 fontSize:30, 
@@ -601,7 +660,7 @@ const Schedule = ({navigation}) => {
               >
                 {item.cups} cups
               </Text>
-              <TouchableOpacity onPress={()=>removeFoodItem(item.time)}>
+              <TouchableOpacity onPress={()=>removeFoodItem(item.time, item.parameters)}>
               <Feather name="x" size={24} color="white"/>
               </TouchableOpacity>
             </View>
@@ -661,6 +720,11 @@ const Schedule = ({navigation}) => {
           </TouchableOpacity>
          
         </View>
+
+    </View>
+
+
+       
         </View>
 
         <Modal isVisible={visible} animationIn='slideInLeft'>

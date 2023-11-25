@@ -2,7 +2,7 @@ import { View, Text, TouchableOpacity } from 'react-native'
 import React from 'react'
 
 
-const PetListSched = ({Days, ScheduleTime}) => {
+const PetListSched = ({data}) => {
   return (
     <View style={{
         marginHorizontal:10,
@@ -15,9 +15,9 @@ const PetListSched = ({Days, ScheduleTime}) => {
       <Text>Day: <Text style={{
         color:'red',
         fontWeight:'bold',
-      }}>{Days}</Text>  </Text>
+      }}>{data.Days}</Text>  </Text>
       <Text>Schedule Time: </Text>
-       {ScheduleTime.map((d, i)=> {
+       {data.ScheduleTime.map((d, i)=> {
         return (
             <View key={i}>
                 <Text style={{

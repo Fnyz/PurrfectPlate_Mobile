@@ -93,7 +93,7 @@ const DashBoard = ({navigation,route: {params: { credentials }}}) => {
      const data = [];
      querySnapshot.forEach((docs) => {
          data.push({dt:docs.data(), id: docs.id});
-         console.log(docs.data());
+
      });
      
      setListOfPet(data);
