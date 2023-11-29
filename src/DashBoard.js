@@ -1,4 +1,4 @@
-import { View, Text, FlatList, Dimensions, TouchableOpacity} from 'react-native'
+import { View, Text, FlatList, Dimensions, TouchableOpacity, Button} from 'react-native'
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons';
@@ -17,6 +17,7 @@ import { getAuth, signOut } from "firebase/auth";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Modal from "react-native-modal";
 import ListPet from './components/ListPet';
+
 
 
 
@@ -60,6 +61,8 @@ const DashBoard = ({navigation,route: {params: { credentials }}}) => {
   }
 
 
+
+
   getUserProfile = async () => {
 
     onSnapshot(doc(db, "users", credentials.userId), (doc) => {
@@ -84,10 +87,13 @@ const DashBoard = ({navigation,route: {params: { credentials }}}) => {
     getUserProfile();
   },[])
 
-  
+
+
 
   useEffect(()=> {
+
     if(search.length === 0){
+      
       const q = query(collection(db, "List_of_Pets"), where("DeviceName", "==", credentials.DeviceName.trim()), orderBy("Created_at", "desc"));
       onSnapshot(q, (querySnapshot) => {
      const data = [];
@@ -315,6 +321,7 @@ const DashBoard = ({navigation,route: {params: { credentials }}}) => {
         height:230,
     }}>
        
+<Button title="Play Sound" onPress={playSound} />
          <Swiper 
           autoplay 
           loop
@@ -335,7 +342,6 @@ const DashBoard = ({navigation,route: {params: { credentials }}}) => {
             />
           }
           >
-
 
          {petNotification.map((item, i)=> {
             return (

@@ -1,23 +1,27 @@
-import { View, Text, ImageBackground , ActivityIndicator, Keyboard, TouchableOpacity} from 'react-native'
-import React, { useEffect, useMemo, useState } from 'react'
+import { View, Text, ImageBackground , ActivityIndicator, Keyboard, TouchableOpacity, FlatList} from 'react-native'
+import React, { useCallback, useEffect, useMemo, useState , useRef} from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { TextInput } from 'react-native-paper';
 import { AntDesign } from '@expo/vector-icons';
 import { Entypo } from '@expo/vector-icons';
 import { useDrawerStatus } from '@react-navigation/drawer';
 import { Ionicons } from '@expo/vector-icons';
-import { collection,getFirestore, doc, updateDoc, addDoc, getDocs, serverTimestamp, query, orderBy, onSnapshot, getDoc} from "firebase/firestore"; 
+import { collection,getFirestore, doc, updateDoc, addDoc, getDocs, serverTimestamp, query, orderBy, onSnapshot, getDoc, where} from "firebase/firestore"; 
 import app from './firebase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Modal from "react-native-modal";
 import {Image} from 'expo-image'
 import { ALERT_TYPE, Dialog, AlertNotificationRoot } from 'react-native-alert-notification';
 import { FontAwesome } from '@expo/vector-icons';
+import { Badge } from 'react-native-paper';
 import { Avatar } from 'react-native-paper';
 import moment from 'moment';
+
 const db = getFirestore(app);
 
 const Reports = ({navigation}) => {
+
+  const flatListRef = useRef();
 
   const [email, setEmail] = useState('');
 
@@ -30,6 +34,13 @@ const Reports = ({navigation}) => {
   const [messageData, setDataMessage] = useState([]);
   const [userImage, setUserImage] = useState('');
   const [userName, setUserName] = useState('');
+  const [mess1, setMess1] = useState({});
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(0); 
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+  const [sendLoading, setSendLoading] = useState(false);
+
 
 
 
@@ -62,7 +73,6 @@ const Reports = ({navigation}) => {
        data.push({dt:docs.data(), id: docs.id});
     
    });
-
    setDataMessage(data);
  });
    
@@ -72,11 +82,22 @@ const Reports = ({navigation}) => {
 
   
 
+  
+ 
+ 
 
 
-
-  const handleSendMessage = async () => {
-
+  const handleSendMessage = useCallback (() => {
+    setSendLoading(true)
+    if(!messageSend){
+      setSendLoading(false)
+      Dialog.show({
+        type: ALERT_TYPE.DANGER,
+        title: 'Warning',
+        textBody: 'Please enter you message before sending!',
+        button: 'close',
+      })
+    }
     const initialMessage = [
       {
         message: messageSend,
@@ -88,46 +109,68 @@ const Reports = ({navigation}) => {
     ]
 
 
+    
+    const notification = {
+      User:data.email,
+      Messages: `${userName} is send you a message please check it to chat.`,
+      image: userImage,
+      createdAt: serverTimestamp(),
+      type:"User",
+      hasSeen:false,
+    }
+
+
+
 
 
     const message = {
+      hasDevice:true,
+      Image:userImage,
       deviceName: deviceName.trim(),
       sender: data.email,
       message:initialMessage,
       createdAt: serverTimestamp(),
+      hasSeen: false,
     }
 
+ 
 
     
     const dts = messageData.find((d) => d.dt.deviceName === deviceName && d.dt.sender === data.email);
     
     if(!dts){
+
       addDoc(collection(db, "Messages"),message)
       .then((docs)=> {
+        setSendLoading(false)
+        setSendMessage('')
         if(docs.id){
-          setSendMessage('')
-          console.log('send new message success')
+          addDoc(collection(db, "Notifications"),notification)
         }
       });
 
       return;
     }
-        
+       
         const currentMessage  = dts.dt.message || [];
         const updatedMessages = [...currentMessage, ...initialMessage];
         const docRef = doc(db, 'Messages', dts.id);
         updateDoc(docRef, {
           message:updatedMessages,
        }).then(()=>{
-         setSendMessage('')
+        setSendLoading(false)
+        setSendMessage('')
+        let pushPage = Math.ceil(mess1?.dt.message.length / itemsPerPage );
+        setCurrentPage(pushPage);
          console.log('update send message success')
+         addDoc(collection(db, "Notifications"),notification);
        });
 
 
        return;
 
     
-  }
+  },[messageSend])
 
   handleGoHome = () => {
     navigation.navigate('Homepage',
@@ -202,13 +245,92 @@ const Reports = ({navigation}) => {
       return;
     
     })
-    
-
-
- 
-
+  
 
   }
+
+
+ const handleAutoPages =() => {
+     
+    if(mess1.dt.message.length -1 > 0){
+      let pushPage = Math.ceil( mess1.dt.message.length  / itemsPerPage );
+      setCurrentPage(pushPage);
+      console.log(pushPage);
+      return;
+    }else{
+      setCurrentPage(1);
+    }
+    
+  }
+
+
+ const handlePreviousPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage((prevState) => prevState - 1)
+    }
+  };
+
+ const handleNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage((prevState) => prevState + 1)
+    }
+  };
+
+
+const renderItems = () => {
+   
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
+    
+    const items = [];
+    const {message} = mess1?.dt || []
+    for (let i = startIndex; i < endIndex; i++) {
+
+      items.push(
+
+        <View style={{
+          flexDirection:'row',
+          alignSelf:message[i].type === "User" ? 'flex-end': 'flex-start',
+          justifyContent: 'center',
+          gap:10,
+          marginVertical:10,
+          width:220,
+          paddingLeft:10,
+        }}>
+          <Avatar.Image size={40} source={{uri:message[i]?.image}} />
+          <View>
+            <Text style={{
+              fontSize:13,
+              opacity:0.6,
+            }}>{message[i]?.username} * {moment(message[i]?.messagedate.toDate()).calendar()}
+            </Text>
+           
+            <View style={{
+              width:160, flexDirection:'row',
+            }}>
+            <Text style={{
+              fontWeight:'bold',
+              fontSize:17,
+              flexWrap: 'wrap', color:'black', opacity:0.7,
+              marginTop:5,
+            }}>{message[i]?.message}</Text>
+            </View>
+  
+         
+          </View>
+        </View>
+
+
+      );
+    
+    }
+    
+   
+    return items.map((item, index) => <View key={index}>{item}</View>);
+  };
+
+  
+
 
 
   const isDrawerOpen = useDrawerStatus() === 'open';
@@ -217,17 +339,16 @@ const Reports = ({navigation}) => {
   }
 
 
-  const dataMessage = (m) => {
-    
-    return m.find(d => d?.dt.sender === data.email);
-
+  const dataMessage = (m, email) => {
+    setTotalItems(m.find(d => d?.dt.sender === email)?.dt.message.length)
+    setTotalPages(Math.ceil(m.find(d => d?.dt.sender === email)?.dt.message.length / itemsPerPage))
+    return setMess1(m.find(d => d?.dt.sender === email));
   }
 
- 
+  
 
 
-  const dMessage = useMemo(()=> dataMessage(messageData), [messageData]);
-
+useMemo(()=> dataMessage(messageData, data.email), [messageData, data.email]);
   
   return (
 
@@ -254,6 +375,7 @@ const Reports = ({navigation}) => {
           marginBottom:5
         }}>
         <View>
+        
         <Text style={{
           fontSize: 30,
           fontWeight: 'bold',
@@ -294,6 +416,7 @@ const Reports = ({navigation}) => {
       label="Email address"
       mode='outlined'
       activeOutlineColor='coral'
+      disabled
       value={email}
       onChangeText={(val) => {
         setEmail(val);
@@ -302,6 +425,7 @@ const Reports = ({navigation}) => {
         <TextInput
       label="Username"
       mode='outlined'
+      disabled
       activeOutlineColor='coral'
       value={userName}
       onChangeText={(val) => {
@@ -371,7 +495,39 @@ const Reports = ({navigation}) => {
       alignItems: 'center',
        borderRadius: 50,
       backgroundColor: '#FAB1A0',
-     }} onPress={()=> setOpenMessage(true)}>
+     }} onPress={()=> {
+      setOpenMessage(true)
+      handleAutoPages();
+      const b = mess1?.dt.message.map(d =>{
+        return d.unseen === false ? { ...d, unseen: true } : d
+       })
+   
+   const dts = messageData.find((d) => d?.dt.deviceName === deviceName && d?.dt.sender === data.email);
+      if(dts?.dt.adminSend === false){
+              const docRef = doc(db, 'Messages', dts.id);
+        updateDoc(docRef, {
+        adminSend:true,
+        message:b
+    }).then(()=>{
+      console.log('seen now!')
+      
+    });
+ 
+    return;
+      }
+ 
+    
+      
+      }}>
+      {mess1?.dt?.adminSend === false && (
+ <Badge style={{
+  position:'absolute',
+  right:12,
+  zIndex:10,
+  top:15,
+  fontWeight:'bold'
+ }}>{ mess1?.dt.message.filter(a => a.type === "Admin" && a.unseen === false).length}</Badge>
+      )}
      <AntDesign name="message1" size={27} color="white" />
      </TouchableOpacity>
 
@@ -431,7 +587,12 @@ const Reports = ({navigation}) => {
             alignItems:'center',
             padding:5,
           }}>
-          <Text style={{
+            <View style={{
+              flexDirection:'row',
+              justifyContent:'center',
+              alignItems:'center',
+            }}>
+            <Text style={{
             fontSize:22,
             fontWeight:'bold',
             opacity:0.7
@@ -440,62 +601,72 @@ const Reports = ({navigation}) => {
             fontSize:25,
             fontWeight:'bold'
           }}>|</Text> Message</Text>
-          <TouchableOpacity onPress={()=> setOpenMessage(false)}>
+          <View style={{
+            flexDirection:'row',
+            justifyContent:'center',
+            alignItems:'center',
+            gap:4,
+            marginLeft:10,
+          }}>
+          <TouchableOpacity onPress={handlePreviousPage} disabled={currentPage === 1}>
+          <AntDesign name="left" size={20} color="coral" style={{
+            opacity: currentPage === 1? 0.5 : 0.8,
+           
+          }} />
+          </TouchableOpacity>
+         
+          <Text style={{
+            fontSize:20,
+            fontWeight:'bold'
+          }}>/</Text>
+          <TouchableOpacity onPress={handleNextPage}    disabled={currentPage === totalPages}>
+          <AntDesign name="right" size={20} color="coral" style={{
+             opacity:currentPage === totalPages ? 0.5 : 0.8
+          }} />
+            </TouchableOpacity>
+          </View>
+          
+         
+          <View>
+           
+          </View>
+            </View>
+  
+          <TouchableOpacity onPress={()=> {
+             setOpenMessage(false)
+             const dts = messageData.find((d) => d?.dt.deviceName === deviceName && d?.dt.sender === data.email);
+             const docRef = doc(db, 'Messages', dts.id);
+             updateDoc(docRef, {
+               adminSend:true,
+            }).then(()=>{
+              console.log('update send message success')
+            });
+          }}>
           <AntDesign name="close" size={24} color="red" />    
           </TouchableOpacity>
           </View>
+
 
           <View style={{
             flex:1,
             elevation:2,
             marginBottom:10,
             padding:10,
+            borderWidth:1,
           }}>
-            {!dMessage && (
-              <Text style={{
-                opacity:0.5,
-              }}>No message found!</Text>
-            )}
-            {dMessage && dMessage?.dt.message.map((data, i) => {
-               return (
-                <View style={{
-                  flexDirection:'row',
-                  alignSelf:'Sender' ? 'flex-end': 'flex-start',
-                  alignItems:'center',
-                  gap:10,
-                  marginVertical:10,
-                  width:220,
-                 
-                
-                
-                }} key={i.toString()}>
-                  <Avatar.Image size={40} source={{uri: data.image}} />
-                  <View>
-                    <Text style={{
-                      fontSize:13,
-                      opacity:0.6,
-                    }}>{data.username} / {moment(data.messagedate.toDate()).calendar()}
-                    </Text>
-                    <Text style={{
-                      opacity:0.5
-                    }}>{moment(data.messagedate.toDate()).format('L')}</Text>
-                    <View style={{
-                 
-                      width:120, flexDirection:'row'
-                    }}>
-                    <Text style={{
-                      fontWeight:'bold',
-                      fontSize:17,
-                      flexWrap: 'wrap', color:'black', opacity:0.7,
-                      marginTop:5,
-                    }}>{data.message}</Text>
-                    </View>
 
-                 
-                  </View>
-                </View>
-              )
-            })}
+            
+
+          <FlatList
+           ref={flatListRef}
+        data={renderItems()}
+        renderItem={({item})=><View>{item}</View>}
+       onContentSizeChange={() => flatListRef.current.scrollToEnd({ animated: true })}
+       onLayout={() => flatListRef.current.scrollToEnd({ animated: true })}
+        keyExtractor={(item, i) => i.toString()}
+      />
+           
+        
 
           </View>
           <View style={{
@@ -528,12 +699,21 @@ const Reports = ({navigation}) => {
             gap:10,
             marginTop:6,
             borderRadius:5,
-          }} onPress={handleSendMessage}>
-          <FontAwesome name="send" size={20} color="white" />
-          <Text style={{
-            fontWeight:'bold',
-            color:'white',
-          }}>SEND</Text>
+          }} onPress={handleSendMessage} disabled={sendLoading}>
+            {sendLoading ? (
+                 <ActivityIndicator animating={true} color='white' size={20} style={{
+                  opacity:0.8,
+                }}/>
+            ): (
+              <>
+                <FontAwesome name="send" size={20} color="white" />
+              <Text style={{
+                fontWeight:'bold',
+                color:'white',
+              }}>SEND</Text>
+              </>
+            )}
+        
           </TouchableOpacity>
           </View>
          

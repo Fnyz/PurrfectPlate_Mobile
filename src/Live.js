@@ -14,7 +14,7 @@ import Modal from 'react-native-modal';
 import app from './firebase';
 import { getFirestore, collection, addDoc, query, where, onSnapshot, getDocs,updateDoc, doc, deleteDoc} from 'firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { AppState } from 'react-native';
+
 
 
 
@@ -33,13 +33,106 @@ const Live = ({navigation}) => {
   const [videoEnded, setVideoEnded] = React.useState(false)
   const [message, setMessage] = React.useState('');
   const [loading2, setLoading2] = React.useState(false);
-  const [appState, setAppState] = React.useState(AppState.currentState);
+
   const [userData, setUserData] = React.useState({});
+  const [apiKey1, setApiKey] = React.useState('');
+  const [channel, setChannel] = React.useState('');
+  const [liveiD, setLiveId] = React.useState("");
+  
+
   
   const isDrawerOpen = useDrawerStatus() === 'open';
   const handleOpenDrawer = () => {
     navigation.openDrawer();
   }
+
+ 
+  const handleRefetch =async () => {
+
+    
+    try {
+      // Step 1: Get live broadcasts associated with the channel
+      const liveBroadcastsResponse = await fetch(
+        `https://www.googleapis.com/youtube/v3/search?key=${apiKey1}&channelId=${channel}&eventType=live&type=video&part=snippet,id`
+      );
+  
+      const liveBroadcastsData = await liveBroadcastsResponse.json();
+    
+      // Step 2: Extract video IDs from the live broadcasts
+      const videoIds = liveBroadcastsData.items.map((item) => item.id.videoId);
+      console.log(videoIds);
+
+        if(!videoIds[0]){
+          setVisible(true);
+          return;
+        }
+       
+        setVisible(false);
+        const url = `https://www.youtube.com/watch?v=${videoIds[0]}`;
+        setYoutubeId(videoIds[0]);
+
+        const docRef = doc(db, 'Livestream', liveiD);
+          updateDoc(docRef, {
+            Youtube_Url:url,
+         }).then(()=>{
+           console.log("Updated Database");
+         });
+
+      // You can use the video IDs for further processing
+    } catch (error) {
+      console.error('Error fetching live streams:', error);
+    }
+
+  }
+
+
+
+
+
+  const fetchLiveStreams = async (apiKey, channelId, id) => {
+    setApiKey(apiKey);
+    setChannel(channelId);
+    setLiveId(id);
+
+    try {
+      // Step 1: Get live broadcasts associated with the channel
+      const liveBroadcastsResponse = await fetch(
+        `https://www.googleapis.com/youtube/v3/search?key=${apiKey}&channelId=${channelId}&eventType=live&type=video&part=snippet,id`
+      );
+  
+      const liveBroadcastsData = await liveBroadcastsResponse.json();
+    
+      // Step 2: Extract video IDs from the live broadcasts
+      const videoIds = liveBroadcastsData.items.map((item) => item.id.videoId);
+
+        if(!videoIds[0]){
+          setVisible(true);
+          return;
+        }
+        setVisible(false);
+        const url = `https://www.youtube.com/watch?v=${videoIds[0]}`;
+        setYoutubeId(videoIds[0]);
+
+        const docRef = doc(db, 'Livestream', id);
+          updateDoc(docRef, {
+            Youtube_Url:url,
+         }).then(()=>{
+           console.log("Updated Database");
+         });
+    
+  
+      
+      
+      // You can use the video IDs for further processing
+    } catch (error) {
+      console.error('Error fetching live streams:', error);
+    }
+
+   
+
+
+  };
+  
 
 
 
@@ -53,12 +146,9 @@ const Live = ({navigation}) => {
   snapshot.docChanges().forEach((change) => {
     
     if (change.type == "modified" && change.doc.data().isliveNow=== true) {
-        setloading(false)
-        setMessage('The video is change , click continue to watch.');
-        const youId = extractYouTubeVideoId(change.doc.data().Youtube_Url);
-        setYoutubeId(youId);
-        setVisible(false);
-        console.log('hello')
+        setMessage('Please wait for a minute, proccessing youtube url.');
+        fetchLiveStreams(change.doc.data().ApiKey,change.doc.data().ChannelID, change.doc.id);
+       
     }
    
   });
@@ -123,12 +213,10 @@ const Live = ({navigation}) => {
     if(videoEnded){
       setYoutubeId('');
       const q = query(collection(db, "Livestream"), where("DeviceName", "==", deviceName));
-      const unsubscribe = onSnapshot(q, (snapshot) => {
+      onSnapshot(q, (snapshot) => {
      snapshot.docChanges().forEach((change) => {  
            const youId = extractYouTubeVideoId(change.doc.data().Youtube_Url);
            setYoutubeId(youId);
-           console.log('Reset')
-  
      });
   
    });
@@ -158,21 +246,14 @@ const Live = ({navigation}) => {
 
   startVideoLive = async () => {
 
-    const jsonKeyFile =  {
-      "client_id":"85076363562-calnoh5d29tju3sohoucghqqiij0np0o.apps.googleusercontent.com",
-      "project_id":"norse-habitat-403110",
-      "auth_uri":"https://accounts.google.com/o/oauth2/auth",
-      "token_uri":"https://oauth2.googleapis.com/token",
-      "auth_provider_x509_cert_url":"https://www.googleapis.com/oauth2/v1/certs",
-      "client_secret":"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","redirect_uris":["http://localhost"]
-    }
-
     setloading(true)
     const request = {
       DeviceName:deviceName.trim(),
-      Youtube_Url:'',
       isliveNow: false,
-      jsonKeyFile,
+      Youtube_Url:"",
+      ApiKey:"",
+      ChannelID:"",
+      jsonKeyFile:{}
     }
 
     const docRef = await addDoc(collection(db, "Livestream"),request);
@@ -183,6 +264,8 @@ const Live = ({navigation}) => {
         document_id: docRef.id,
         request:'Start',
       });
+
+        playSound();      
       console.log('Sending request to live video!');
       const jsonValue = await AsyncStorage.getItem('Credentials');
       const credential = JSON.parse(jsonValue);
@@ -190,6 +273,19 @@ const Live = ({navigation}) => {
      return;
     }
   }
+
+  async function playSound() {
+    console.log('Loading Sound');
+    const { sound } = await Audio.Sound.createAsync( require("../assets/WelcometoPurfectPlate3.wav")
+    );
+    setSound(sound);
+
+    console.log('Playing Sound');
+    await sound.playAsync();
+  }
+
+
+
 
 
   
@@ -213,13 +309,13 @@ const Live = ({navigation}) => {
      snapshot.docChanges().forEach((change) => {
       const {DeviceName,Youtube_Url, isliveNow } = change.doc.data()
 
-      if(!Youtube_Url){
+      if(!isliveNow && !Youtube_Url){
         setloading(true);
         setMessage('Please wait a minute to see the live?');
         return;
       }
  
-      if(DeviceName == credential.DeviceName.trim() && isliveNow == true){
+      if(DeviceName == credential.DeviceName.trim() && isliveNow == true && Youtube_Url){
         setMessage('Do you want to continue watching the live?');
         setPrompt(true);
         setVisible(false);
@@ -244,9 +340,7 @@ const Live = ({navigation}) => {
     getData();
     setMessage('Hello, do you want to watch the live video?')
 
-    return () => {
-      setVisible(true);
-    }
+ 
   },[])
 
 
@@ -308,11 +402,49 @@ const Live = ({navigation}) => {
     console.log('Recording stopped and stored at', uri);
 
    
-    const request = {
-      DeviceName:deviceName.trim(),
-      RecordingFile:uri,
-      response: false,
-    }
+
+    const blobToBase64 = (blob) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(blob);
+      return new Promise((resolve) => {
+        reader.onloadend = () => {
+          resolve(reader.result);
+        };
+      });
+    };
+  
+    const audioURI = recording.getURI();
+    console.log(audioURI)
+    const blob = await new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.onload = function () {
+        resolve(xhr.response);
+      };
+      xhr.onerror = function (e) {
+        reject(new TypeError("Network request failed"));
+      };
+      xhr.responseType = "blob";
+      xhr.open("GET", audioURI, true);
+      xhr.send(null);
+    });
+  
+    const audioBase64 = await blobToBase64(blob);
+
+
+
+  
+
+  
+
+   
+        const request = {
+          DeviceName:deviceName.trim(),
+          RecordingFile:audioBase64,
+          response: false,
+        }
+      
+     
+     
 
     const docRef = await addDoc(collection(db, "Speak_To_Device"),request);
     if(docRef.id) {
@@ -323,8 +455,15 @@ const Live = ({navigation}) => {
         request:null,
       });
     }
-  
+ 
+    
   }
+
+  
+
+
+
+
 
 
   const playerRef = useRef();
@@ -395,6 +534,8 @@ const Live = ({navigation}) => {
         play={true}
         onChangeState={handleVideoEnd}
       />
+
+
 
 
   

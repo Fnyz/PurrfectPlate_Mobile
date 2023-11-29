@@ -4,13 +4,14 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { TextInput } from 'react-native-paper';
 import app from './firebase';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, sendEmailVerification, getAuth, signOut} from 'firebase/auth';
-import { setDoc , doc, getFirestore} from 'firebase/firestore';
+import { setDoc , doc, getFirestore, onSnapshot, updateDoc, collection, query} from 'firebase/firestore';
 import { ALERT_TYPE, Dialog, AlertNotificationRoot } from 'react-native-alert-notification';
 import * as Application from 'expo-application'
 import * as Device from 'expo-device';
 import Modal from "react-native-modal";
 import {Image} from 'expo-image'
 import Modalism from './components/ModalVerification';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const auth = getAuth(app);
 const db = getFirestore(app);
@@ -32,9 +33,46 @@ const LoginSignUp = ({route, navigation}) => {
   const [deviceId, setDeviceId] = useState('');
   const [visible, setVisible] = useState(false);
   const [visible1, setVisible1] = useState(false);
+  const [deviceList, setDeviceList] = useState([]);
+  const [listUser, setUserList] = useState([]);
+
+ 
+  const getListDevice = () => {
+    
+    const q = query(collection(db, "Device_Authorization"));
+   onSnapshot(q, async (querySnapshot) => {
+  const dt = [];
+  querySnapshot.forEach((doc) => {
+      dt.push({data:doc.data(), id:doc.id});
+  });
+      setDeviceList(dt);    
+   });
+
+  }
+
+
+    
+  const getListUser = () => {
+    const q = query(collection(db, "users"));
+   onSnapshot(q, (querySnapshot) => {
+  const dt = [];
+  querySnapshot.forEach((doc) => {
+      dt.push({data:doc.data(), id:doc.id});
+  });
+  setUserList(dt);
+
+});
+
+  }
 
 
 
+
+
+  useEffect(()=>{
+    getListDevice();
+    getListUser();
+  },[])
 
 
   getPhoneId = async () => {
@@ -216,7 +254,7 @@ const LoginSignUp = ({route, navigation}) => {
     
 
         signInWithEmailAndPassword(auth, email, password)
-  .then((userCredential) => {
+  .then(async(userCredential) => {
 
 
 
@@ -232,21 +270,58 @@ const LoginSignUp = ({route, navigation}) => {
         return;
       }
 
-      
- 
 
-      const profile = {
-        email: user.email,
-        id: user.uid,
-        deviceId: deviceId,
-       
+      const res = deviceList.find(d => d.data.Email === user.email);
+
+      if(!res){
+        const profile = {
+          email: user.email,
+          id: user.uid,
+          deviceId: deviceId,
+         
+        }
+        setVisible(false);
+        setEmail('')
+        setPassword('');
+        navigation.replace('ConnectDevice', profile);
+        
+        return;
       }
-      setVisible(false);
-      setEmail('')
-      setPassword('');
-      navigation.replace('ConnectDevice', profile);
+
+      const credentials = {
+        DeviceName: res.data.DeviceName.trim(),
+        password: res.data.Password.trim(),
+        email:user.email,
+        userId:user.uid,
+      }
+     
+      const a = listUser.find(d => d.data.email === res.data.Email);
+      if(!a) return;
+      const devicesss = doc(db, "users", a.id);
+      await updateDoc(devicesss, {
+        isActive:true
+      }).then(()=> {
+        setVisible(false);
+        setEmail('')
+        setPassword('');
+      const storeData = async () => {
+        try {
+          await AsyncStorage.setItem('Credentials', JSON.stringify(credentials));
+          navigation.replace('Homepage',
+      {
+        screen: 'Dashboard',
+        params: { credentials },
+      }
+      );
+        } catch (e) {
+          
+        }
+      };
+      storeData();
+      })
       
       return;
+   
  
  
   })

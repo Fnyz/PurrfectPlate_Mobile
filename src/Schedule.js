@@ -10,7 +10,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useDrawerStatus } from '@react-navigation/drawer';
 import { AntDesign, Feather} from '@expo/vector-icons'
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { collection, addDoc, getFirestore, query, onSnapshot, where} from "firebase/firestore"; 
+import { collection, addDoc, getFirestore, query, onSnapshot, where, doc, updateDoc, deleteDoc} from "firebase/firestore"; 
 import app from './firebase';
 import {  AlertNotificationRoot, ALERT_TYPE, Dialog } from 'react-native-alert-notification';
 import Modal from 'react-native-modal';
@@ -18,6 +18,7 @@ import {Image} from 'expo-image'
 import PetListSched from './components/PetListSched';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {Dimensions} from 'react-native';
+
 
 
 
@@ -44,9 +45,10 @@ const Schedule = ({navigation}) => {
   const [petSchesData, setPetSchedDataset] = useState([]);
   const [deviceName, setDeviceName] = useState('');
   const [timeOnly, setTimeOnly] = useState('');
-  const [parameters, setParametes] = useState('');
-
   const [company, setComapny] = useState([]);
+  const [updatingProccess, setUpdatingProccess] = useState(false);
+  const [click, setClick] = useState(false);
+
 
 
   
@@ -112,7 +114,103 @@ const Schedule = ({navigation}) => {
 
 
 
+
+
+  const handleRemoveSchedTimeSched = async (time, days) => {
+    setUpdatingProccess(true)
+    const a = petSchesData.find((d) => d.data.Days === days && d.data.DeviceName === deviceName)
+    const b = a?.data.ScheduleTime.filter((d) => d.time !== time );
+   
+    if(a.data.ScheduleTime.length - 1 === 0){
+      setUpdatingProccess(false)
+      await deleteDoc(doc(db, "feeding_schedule",a.id)).then(()=>{
+        Dialog.show({
+          type: ALERT_TYPE.DANGER,
+          title: 'Success!',
+          textBody: "Time is successfully removed from the schedule.",
+          button: 'close',
+        })
+      });
+      return;
+    }
+    const docRef = doc(db, 'feeding_schedule', a.id);
+    updateDoc(docRef, {
+     ScheduleTime:b,
+  }).then(()=>{
+    setUpdatingProccess(false)
+    Dialog.show({
+      type: ALERT_TYPE.DANGER,
+      title: 'Success!',
+      textBody: "Time is successfully removed from the schedule.",
+      button: 'close',
+    })
+  });
+    
+  }
+
+  const handleRemoveSched = async (id) => {
+    await deleteDoc(doc(db, "feeding_schedule",id));
+  }
+
+
+   
+  const handleUpdateTimeHere = (days, time, cups, currenTime) => {
+    setUpdatingProccess(true)
+    const a = petSchesData.find((d) => d.data.Days === days && d.data.DeviceName === deviceName)
+    const b = a?.data.ScheduleTime.find((d) => d.time === currenTime.split(" ")[0].trim());
+    const c = a?.data.ScheduleTime.find((d) => d.time === time.split(" ")[0].trim());
+
+    if(c){
+      setUpdatingProccess(false)
+      Dialog.show({
+        type: ALERT_TYPE.DANGER,
+        title: 'Success!',
+        textBody: `Time ${time.split(" ")[0].trim()} already set on the pet schedule, please choose other time.`,
+        button: 'close',
+      })
+      return;
+    }
+
+    
+
+    if(b){
+     const res = a?.data.ScheduleTime.filter(d => d.time !== currenTime.split(" ")[0].trim());
+     const newArray =  [
+      {cups: cups,
+       parameters:time.split(" ")[1].trim(),
+       time:time.split(" ")[0].trim(),
+      }
+     ]
+
+  
+    
+     const updateSched = [...res, ...newArray]
+     const docRef = doc(db, 'feeding_schedule', a.id);
+     updateDoc(docRef, {
+      ScheduleTime:updateSched,
+   }).then(()=>{
+    setUpdatingProccess(false)
+    Dialog.show({
+      type: ALERT_TYPE.SUCCESS,
+      title: 'Success!',
+      textBody: 'TIME AND CUPS ARE UPDATED SUCCESSFULLY!',
+      button: 'close',
+    })
+   });
+
+
+    }
+  
+  
+  
+    
+     
+  }
+
+
+
   handleSetPetSched = async () => {
+   
     const petSchedule = {
       Petname: petNameVal,
       Days: day,
@@ -198,7 +296,7 @@ const Schedule = ({navigation}) => {
       const formattedTimeString = `${hours}:${minutes.toString().padStart(2, '0')} ${ampm}`;
       setFormattedTime(formattedTimeString);
       setTimeOnly(formattedTimeString.split(" ")[0]);
-      setParametes(formattedTimeString.split(" ")[1]);
+
 
  
     }
@@ -207,19 +305,36 @@ const Schedule = ({navigation}) => {
 
   const addFoodItem = () => {
     if (!caps|| !formattedTime) {
+      Dialog.show({
+        type: ALERT_TYPE.DANGER,
+        title: 'Warning!',
+        textBody: 'Please provide the time or the cups, thank you!',
+        button: 'close',
+      })
       // Prevent adding empty entries
       return;
     }
 
+    const timeToMinutes = (timeStr) => {
+      const [hours, minutes] = timeStr.split(':').map(Number);
+      return hours * 60 + minutes;
+    };
+   
+  
+  
+
    //trace if that schedule is already exists
     const res  = petData.find(d => d.data.Days === day.trim() && d.data.DeviceName === deviceName);
-      const exist = res.data.ScheduleTime.find(a => parseInt(a.time) === parseInt(formattedTime.split(" ")[0]) && a.parameters === formattedTime.split(" ")[1] );
-     
+      const exist = res.data.ScheduleTime.find(a => timeToMinutes(a.time) === timeToMinutes(timeOnly) && a.parameters.toLowerCase().trim() ===  formattedTime.split(" ")[1].toLowerCase().trim() );
   
     if(exist){
     
-          alert(`Time ${formattedTime} already set on the schedule of pet. please choose other time.`);
-          setFormattedTime('');
+          Dialog.show({
+            type: ALERT_TYPE.DANGER,
+            title: 'Warning!',
+            textBody: `Time ${formattedTime} already set on the pet schedule, please choose other time.`,
+            button: 'close',
+          })
           return;
   
     }
@@ -227,9 +342,12 @@ const Schedule = ({navigation}) => {
     // Check if the time already exists in the list
     const existingItem = foodItems.find((item) => item.time.split(' ')[0] === formattedTime.split(' ')[0]);
     if (existingItem) {
-      // You can handle the duplicate time case here
-      alert(`Time ${formattedTime} already exists. Remove the existing entry first.`);
-      setFormattedTime("");
+      Dialog.show({
+        type: ALERT_TYPE.DANGER,
+        title: 'Warning!',
+        textBody: `Time ${formattedTime} already exists. Remove the existing entry first.`,
+        button: 'close',
+      })
       return;
     }
 
@@ -267,7 +385,7 @@ const Schedule = ({navigation}) => {
 
  const getSchedule = (name) => {
   const q = query(collection(db, "feeding_schedule"), where("Petname", "==", name));
-  const unsubscribe = onSnapshot(q, (querySnapshot) => {
+  onSnapshot(q, (querySnapshot) => {
     const schedDatas = [];
     querySnapshot.forEach((doc) => {
         schedDatas.push({data:doc.data(), id:doc.id});
@@ -280,7 +398,7 @@ const Schedule = ({navigation}) => {
   useEffect(()=> {
 
     const isSchedule = () => {
-    const res = petData.find(d => d?.data.Petname?.toLowerCase().trim() === petNameVal.toLowerCase().trim());
+    const res = petData.find(d => d?.data.Petname?.toLowerCase().trim() === petNameVal?.toLowerCase().trim());
     if(!res){
       setShow(false);
       return;
@@ -567,7 +685,7 @@ const Schedule = ({navigation}) => {
       )}
 
     <TextInput
-      label="Input food caps"
+      label="Input food cups"
       mode='outlined'
       activeOutlineColor='coral'
       style={{
@@ -596,7 +714,7 @@ const Schedule = ({navigation}) => {
               color:'white',
               fontWeight:'bold',
               fontSize:15,
-            }}>SET TIME & CAPS</Text>
+            }}>SET TIME & CUPS</Text>
           </TouchableOpacity>
           <View style={{
           marginTop:10,
@@ -693,12 +811,15 @@ const Schedule = ({navigation}) => {
             flexDirection:'row',
             gap:5
           }} onPress={handleSetPetSched}>
+           
             <MaterialIcons name="schedule" size={20} color="white" />
             <Text style={{
               color:'white',
               fontWeight:'bold',
               fontSize:15,
             }}>SET</Text>
+         
+          
           </TouchableOpacity>
           <TouchableOpacity style={{
             borderRadius:5,
@@ -786,16 +907,17 @@ const Schedule = ({navigation}) => {
           }}><Text style={{
             color:'coral',
             fontWeight:'bold',
-            fontSize:18,
+            fontSize:25,
           }}>/</Text> <Text style={{
             fontWeight:'bold',
-            fontSize:18,
+            fontSize:25,
           }}>{petNameVal}'s</Text> set schedules</Text>
           <TouchableOpacity onPress={closeModals}>
-            <Feather name="x" size={24} color="red" style={{
+            <Feather name="x" size={25} color="red" style={{
               marginRight:7,
               marginTop:10,
               marginBottom:5,
+          
             }}/>
           </TouchableOpacity>
           </View>
@@ -804,8 +926,8 @@ const Schedule = ({navigation}) => {
           <FlatList
         data={petSchesData}
         renderItem={({ item, index })=> {
-          return (
-           <PetListSched {...item}/>
+          return ( 
+           <PetListSched {...item} handleUpdateTimeHere={handleUpdateTimeHere} updatingProccess={updatingProccess} handleRemoveSchedTimeSched={handleRemoveSchedTimeSched} handleRemoveSched={handleRemoveSched}/>
            )
           }}
           keyExtractor={(_, i) => i.toString()}
