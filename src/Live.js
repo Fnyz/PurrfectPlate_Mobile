@@ -14,8 +14,7 @@ import Modal from 'react-native-modal';
 import app from './firebase';
 import { getFirestore, collection, addDoc, query, where, onSnapshot, getDocs,updateDoc, doc, deleteDoc} from 'firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
-
+import { useState } from 'react';
 
 
 const db = getFirestore(app);
@@ -30,15 +29,15 @@ const Live = ({navigation}) => {
   const [youTubeId, setYoutubeId] = React.useState('');
   const [prompt, setPrompt] = React.useState(false);
   const [deviceName, setDeviceName] = React.useState('');
-  const [videoEnded, setVideoEnded] = React.useState(false)
-  const [message, setMessage] = React.useState('');
-  const [loading2, setLoading2] = React.useState(false);
-
+  const [message, setMessage] = React.useState('Hello, do you want to watch the live video?');
+  const [credential, setCredential] = React.useState({});
   const [userData, setUserData] = React.useState({});
   const [apiKey1, setApiKey] = React.useState('');
   const [channel, setChannel] = React.useState('');
   const [liveiD, setLiveId] = React.useState("");
-  
+  const [liveStreamList, setLiveStreamList] = useState([]);
+  const [visible1, setVisible1] = useState(false);
+  const [load1, setloading1] = React.useState(false);
 
   
   const isDrawerOpen = useDrawerStatus() === 'open';
@@ -46,42 +45,49 @@ const Live = ({navigation}) => {
     navigation.openDrawer();
   }
 
- 
   const handleRefetch =async () => {
+   setloading1(true)
+   
+    const apiUrl = `https://www.googleapis.com/youtube/v3/search?key=${apiKey1}&channelId=${channel}&eventType=live&type=video&part=snippet,id`;
 
+    fetch(apiUrl)
+      .then(response => response.json())
+      .then(data => {
+        console.log('API Response:', data); // Log the entire API response
+        const liveVideo = data.items && data.items[0]; // Check if items array exists
+        if (liveVideo) {
+          const videoId = liveVideo.id.videoId;
+          const url = `https://www.youtube.com/watch?v=${videoId}`;
+          if(!videoId){
+            setVisible(false);
+            setloading1(false)
+            setVisible1(true);
+            setloading1(false)
+            return;
+          }
+     
+          if(url){
+            const docRef = doc(db, 'Livestream', liveiD);
+            updateDoc(docRef, {
+              Youtube_Url:url,
+           }).then(()=>{
+            setYoutubeId(videoId);
+            setVisible(false);
+            setVisible1(false);
+            setloading(false);
+            setloading1(false)
+             console.log("Updated Database");
+           });
     
-    try {
-      // Step 1: Get live broadcasts associated with the channel
-      const liveBroadcastsResponse = await fetch(
-        `https://www.googleapis.com/youtube/v3/search?key=${apiKey1}&channelId=${channel}&eventType=live&type=video&part=snippet,id`
-      );
-  
-      const liveBroadcastsData = await liveBroadcastsResponse.json();
-    
-      // Step 2: Extract video IDs from the live broadcasts
-      const videoIds = liveBroadcastsData.items.map((item) => item.id.videoId);
-      console.log(videoIds);
-
-        if(!videoIds[0]){
-          setVisible(true);
-          return;
+          }
+      // // You can use the video IDs for further processing
+        } else {
+          console.log('No live video found.');
         }
-       
-        setVisible(false);
-        const url = `https://www.youtube.com/watch?v=${videoIds[0]}`;
-        setYoutubeId(videoIds[0]);
-
-        const docRef = doc(db, 'Livestream', liveiD);
-          updateDoc(docRef, {
-            Youtube_Url:url,
-         }).then(()=>{
-           console.log("Updated Database");
-         });
-
-      // You can use the video IDs for further processing
-    } catch (error) {
-      console.error('Error fetching live streams:', error);
-    }
+      })
+      .catch(error => {
+        console.log('Error fetching live stream data:', error);
+      });
 
   }
 
@@ -90,61 +96,86 @@ const Live = ({navigation}) => {
 
 
   const fetchLiveStreams = async (apiKey, channelId, id) => {
+
     setApiKey(apiKey);
     setChannel(channelId);
     setLiveId(id);
-
-    try {
-      // Step 1: Get live broadcasts associated with the channel
-      const liveBroadcastsResponse = await fetch(
-        `https://www.googleapis.com/youtube/v3/search?key=${apiKey}&channelId=${channelId}&eventType=live&type=video&part=snippet,id`
-      );
   
-      const liveBroadcastsData = await liveBroadcastsResponse.json();
+
+      // Step 1: Get live broadcasts associated with the channel
+      const apiUrl = `https://www.googleapis.com/youtube/v3/search?key=${apiKey}&channelId=${channelId}&eventType=live&type=video&part=snippet,id`;
+
+    fetch(apiUrl)
+      .then(response => response.json())
+      .then(data => {
+        console.log('API Response:', data); // Log the entire API response
+        const liveVideo = data.items && data.items[0]; // Check if items array exists
+        if (liveVideo) {
+          const videoId = liveVideo.id.videoId;
+          const url = `https://www.youtube.com/watch?v=${videoId}`;
+
+         if(!videoId){
+          setVisible(false);
+          setVisible1(true);
+          handleRefetch();
+          setloading1(false)
+     
+           return;
+         }
+
     
-      // Step 2: Extract video IDs from the live broadcasts
-      const videoIds = liveBroadcastsData.items.map((item) => item.id.videoId);
-
-        if(!videoIds[0]){
-          setVisible(true);
-          return;
-        }
-        setVisible(false);
-        const url = `https://www.youtube.com/watch?v=${videoIds[0]}`;
-        setYoutubeId(videoIds[0]);
-
-        const docRef = doc(db, 'Livestream', id);
+        if(url){
+          const docRef = doc(db, 'Livestream', id);
           updateDoc(docRef, {
             Youtube_Url:url,
          }).then(()=>{
+          setYoutubeId(videoId);
+          setVisible(false);
+          setloading(false);
+          setVisible1(false);
            console.log("Updated Database");
          });
     
   
-      
-      
-      // You can use the video IDs for further processing
-    } catch (error) {
-      console.error('Error fetching live streams:', error);
-    }
+        }
+      // // You can use the video IDs for further processing
+        } else {
+          console.log('No live video found.');
+        }
+      })
+      .catch(error => {
+        console.log('Error fetching live stream data:', error);
+      });
 
+       
+   
+    
    
 
 
   };
+
+
+
+  useEffect(()=> {
+          const q = query(collection(db, "Livestream"));
+          onSnapshot(q, (snapshot) => {
+            const data = [];
+          snapshot.docChanges().forEach((change) => {
   
-
-
+            data.push({data: change.doc.data(), id: change.doc.id})
+        });
+        setLiveStreamList(data);
+      });
+},[])
 
 
   
   useEffect(()=> {
-
-    
     const q = query(collection(db, "Livestream"), where("DeviceName", "==", deviceName));
     onSnapshot(q, (snapshot) => {
   snapshot.docChanges().forEach((change) => {
-    
+    setLiveId(change.doc.id)
     if (change.type == "modified" && change.doc.data().isliveNow=== true) {
         setMessage('Please wait for a minute, proccessing youtube url.');
         fetchLiveStreams(change.doc.data().ApiKey,change.doc.data().ChannelID, change.doc.id);
@@ -159,131 +190,113 @@ const Live = ({navigation}) => {
   },[])
 
 
-
-  exitThisComponent = async () => {
-
-    setLoading2(true);
-    if(videoEnded){
-      const querySnapshot = await getDocs(collection(db, "Livestream"));
-      querySnapshot.forEach((docs) => {
-        const {DeviceName} = docs.data();
-        if(DeviceName.trim() === deviceName.trim()){
-          deleteDoc(doc(db, "Livestream", docs.id));
-          setMessage('Please wait to exit.');
-          setYoutubeId('');
-          setTimeout(() => {
-            setLoading2(false)
-            setVisible(false);
-            navigation.navigate('Homepage',
-            {
-             screen: 'Dashboard',
-             params: {credentials: userData },
-           }
-           );
-          }, 3000);
-         
-          return;
-        }
-    })
-
-   
-
+  const handleShowCredData =  async () => {
+    const user = await AsyncStorage.getItem("Credentials")
+    if(user){
+        const datas = JSON.parse(user);
+        setCredential(datas);
     }
-
-    setVisible(false);
-    navigation.replace('Homepage',
-    {
-     screen: 'Dashboard',
-     params: {credentials: userData },
-   }
-   );
-
- 
-
- 
-
-  
-  }
+}
 
 
- 
 
-  continueWatching = () => {
-
-    if(videoEnded){
-      setYoutubeId('');
-      const q = query(collection(db, "Livestream"), where("DeviceName", "==", deviceName));
-      onSnapshot(q, (snapshot) => {
-     snapshot.docChanges().forEach((change) => {  
-           const youId = extractYouTubeVideoId(change.doc.data().Youtube_Url);
-           setYoutubeId(youId);
-     });
-  
-   });
-
-
-    }
-    setloading(true);
-    setTimeout(() => {
-      setloading(false)
+  const continueWatching = () => {
+    const res = liveStreamList.find(e => e.data.DeviceName.trim() === credential.DeviceName.trim())
+    const youId = extractYouTubeVideoId(res.data.Youtube_Url);
+    if(youId){
+      setYoutubeId(youId);
       setVisible(false);
-    }, 3000);
-
-    return;
+    }
+    
+    
     
   }
 
 
   const handleVideoEnd = (event) => {
     if(event === 'ended'){
-      setVisible(true);
-      setMessage('The live has ended do you want to watch it again? or exit.');
-      setVideoEnded(true)
-      setloading(false);
+      const docRef = doc(db, 'Livestream', liveiD);
+      updateDoc(docRef, {
+        Youtube_Url:'',
+        isliveNow:false,
+        ended:true,
+     }).then(()=>{
+       console.log("Updated Database");
+       setYoutubeId("");
+       setMessage("Live video ended, do you want to watch live again?");
+       setVisible(true);
+       setloading(false);
+     });
+   
     }
+
+
   };
+
+  useEffect(()=>{
+  
+    setVisible(true);
+
+    handleShowCredData();
+   },[])
   
 
   startVideoLive = async () => {
 
     setloading(true)
-    const request = {
-      DeviceName:deviceName.trim(),
-      isliveNow: false,
-      Youtube_Url:"",
-      ApiKey:"",
-      ChannelID:"",
-      jsonKeyFile:{}
+
+    if(!youTubeId){
+      const request = {
+        DeviceName:credential.DeviceName.trim(),
+        isliveNow: false,
+        Youtube_Url:"",
+        ApiKey:"",
+        ChannelID:"",
+        jsonKeyFile:{}
+      }
+      const res = liveStreamList.find(e => e.data.DeviceName.trim() === credential.DeviceName.trim())
+      if(!res){
+        const docRef = await addDoc(collection(db, "Livestream"),request);
+        if(docRef.id) {
+          await addDoc(collection(db, "Task"),{
+            type:'Livestream',
+            deviceName:credential.DeviceName.trim(),
+            document_id: docRef.id,
+            request:'Start',
+          });
+         
+          console.log('Sending request to live video!');
+          const jsonValue = await AsyncStorage.getItem('Credentials');
+          const credential = JSON.parse(jsonValue);
+          setDeviceName(credential.DeviceName);
+         return;
+        }
+      }
+
+      const docRef = doc(db, 'Livestream', res.id);
+      updateDoc(docRef, {
+        ended:false,
+     }).then(async()=>{
+       console.log("Updated Database");
+       await addDoc(collection(db, "Task"),{
+         type:'Livestream',
+         deviceName:deviceName.trim(),
+         document_id: docRef.id,
+         request:'Start',
+       });
+       console.log('Sending request to live video!');
+       setloading(true);
+      })
+
+
+    return;
+   
     }
 
-    const docRef = await addDoc(collection(db, "Livestream"),request);
-    if(docRef.id) {
-      await addDoc(collection(db, "Task"),{
-        type:'Livestream',
-        deviceName:deviceName.trim(),
-        document_id: docRef.id,
-        request:'Start',
-      });
-
-        playSound();      
-      console.log('Sending request to live video!');
-      const jsonValue = await AsyncStorage.getItem('Credentials');
-      const credential = JSON.parse(jsonValue);
-      setDeviceName(credential.DeviceName);
-     return;
-    }
+    
+ 
+    
   }
-
-  async function playSound() {
-    console.log('Loading Sound');
-    const { sound } = await Audio.Sound.createAsync( require("../assets/WelcometoPurfectPlate3.wav")
-    );
-    setSound(sound);
-
-    console.log('Playing Sound');
-    await sound.playAsync();
-  }
-
 
 
 
@@ -291,12 +304,15 @@ const Live = ({navigation}) => {
   
 
 
+
+  useEffect(()=> {
+
+
   const getData = async () => {
-   
+
     try {
       
-      setVisible(true);
-      setMessage('Hello, do you want to watch the live video?');
+   
       const jsonValue = await AsyncStorage.getItem('Credentials');
       const credential = JSON.parse(jsonValue);
    
@@ -307,20 +323,28 @@ const Live = ({navigation}) => {
       const q = collection(db, "Livestream");
       onSnapshot(q, (snapshot) => {
      snapshot.docChanges().forEach((change) => {
-      const {DeviceName,Youtube_Url, isliveNow } = change.doc.data()
+      const {DeviceName,Youtube_Url, isliveNow, ApiKey, ChannelID, ended} = change.doc.data()
 
-      if(!isliveNow && !Youtube_Url){
+      if(DeviceName == credential.DeviceName.trim() && !isliveNow && !Youtube_Url && !ended){
         setloading(true);
+     
         setMessage('Please wait a minute to see the live?');
         return;
       }
+
+      if(DeviceName == credential.DeviceName.trim() && isliveNow && !Youtube_Url && !ended){
+      
+        setMessage('Please wait for a minute, proccessing youtube url.');
+        fetchLiveStreams(ApiKey ,ChannelID, change.doc.id);
+        setloading(true);
+        return;
+      }
+ 
  
       if(DeviceName == credential.DeviceName.trim() && isliveNow == true && Youtube_Url){
         setMessage('Do you want to continue watching the live?');
         setPrompt(true);
-        setVisible(false);
-       const youId = extractYouTubeVideoId(Youtube_Url);
-        setYoutubeId(youId);
+
         return;
       }
   
@@ -334,11 +358,9 @@ const Live = ({navigation}) => {
     }
   };
 
-
-  useEffect(()=> {
   
     getData();
-    setMessage('Hello, do you want to watch the live video?')
+   
 
  
   },[])
@@ -609,11 +631,11 @@ const Live = ({navigation}) => {
         </View>
 
 
-        <Modal isVisible={visible} animationIn='slideInLeft'>
+        <Modal isVisible={visible} animationIn='slideInLeft' >
           <View style={{
             width:'100%',
             backgroundColor:'white',
-            height: videoEnded ? '35%' : '33%',
+            height: '35%',
             alignItems:'center',
             borderRadius:10,
           }}>
@@ -631,7 +653,8 @@ const Live = ({navigation}) => {
               fontSize:15,
               fontWeight:'700',
               textAlign:'center',
-              marginHorizontal:videoEnded ? 70 : 0,
+              marginHorizontal:70,
+              width:170,
             }}>{message}</Text>
             <View style={{
               width:'100%',
@@ -675,7 +698,7 @@ const Live = ({navigation}) => {
               color:'white',
               fontWeight:'bold',
               fontSize:18,
-            }}>{videoEnded ? 'Rewatch' : 'Continue'}</Text>
+            }}>Continue</Text>
             }
               
               </TouchableOpacity>
@@ -735,31 +758,132 @@ const Live = ({navigation}) => {
                 backgroundColor:'white',
                 borderWidth:1,
                 borderColor:'#FAB1A0'
-              }} onPress={exitThisComponent}>
-                {loading2 ? <View style={{
-                flexDirection:'row',
-                gap:5,
-                justifyContent:'center',
-                alignItems:'center',
+              }} onPress={()=>{
+                navigation.navigate('Homepage',
+                {
+                 screen: 'Dashboard',
+                 params: {credentials: userData },
+               }
+               );
               }}>
-                <ActivityIndicator animating={true} color='#FAB1A0' size={20} style={{
-              opacity:0.8,
-              position:'relative',
-              left:0,
-            }}/> 
-                <Text style={{
-                  color:'#FAB1A0',
-                  fontWeight:'bold'
-                }}>Wait...</Text>
-              </View> : 
+             
               
               <Text style={{
                 color:'#FAB1A0',
                 fontWeight:'bold',
                 fontSize:15,
-              }}>{videoEnded ? 'EXIT' : 'GO BACK'}</Text>
+              }}>GO HOME</Text>
               
-              }
+         
+              </TouchableOpacity>
+              
+              
+            
+             
+            </View>
+          </View>
+        
+      </Modal>
+
+      <Modal isVisible={visible1} animationIn='slideInLeft'>
+          <View style={{
+            width:'100%',
+            backgroundColor:'white',
+            height:'35%',
+            alignItems:'center',
+            borderRadius:10,
+          }}>
+              <Image
+        style={{
+          width:150,
+          height:150,
+          opacity:0.9,
+        }}
+        source={require('../assets/KawaiDog.png')}
+        contentFit="cover"
+        transition={1000}
+      />
+            <Text style={{
+              fontSize:15,
+              fontWeight:'700',
+              textAlign:'center',
+              marginHorizontal:70 ,
+              width:220
+            }}>Something went wrong, please click the bottom to request again.</Text>
+            <View style={{
+              width:'100%',
+              padding:10,
+              justifyContent:'center',
+              alignItems:'center',
+              flexDirection:'row',
+              gap:10,
+              marginTop:10,
+            }}>
+           
+            <TouchableOpacity style={{
+                
+              width:'30%',
+              height:40,
+              justifyContent:'center',
+              alignItems:'center',
+              borderTopLeftRadius:10,
+              borderBottomLeftRadius:10,
+              backgroundColor:'#FAB1A0'
+            }} disabled={load1? true: false} onPress={handleRefetch} >
+              {load1 ?
+              <View style={{
+                flexDirection:'row',
+                gap:5,
+                justifyContent:'center',
+                alignItems:'center',
+              }}>
+                <ActivityIndicator animating={true} color='white' size={20} style={{
+              opacity:0.8,
+              position:'relative',
+              left:0,
+            }}/> 
+                <Text style={{
+                  color:'white',
+                  fontWeight:'bold'
+                }}>Wait...</Text>
+              </View>
+          : 
+          <Text style={{
+            color:'white',
+            fontWeight:'bold',
+            fontSize:18,
+          }}>Request</Text>
+          }
+            
+            </TouchableOpacity>
+            
+
+              
+              <TouchableOpacity style={{
+                
+                width:'30%',
+                height:40,
+                justifyContent:'center',
+                alignItems:'center',
+                borderTopRightRadius:10,
+                borderBottomRightRadius:10,
+                backgroundColor:'white',
+                borderWidth:1,
+                borderColor:'#FAB1A0'
+              }} onPress={()=>{
+                navigation.navigate('Homepage',
+                {
+                 screen: 'Dashboard',
+                 params: {credentials: userData },
+               }
+               );
+              }}>
+               
+              <Text style={{
+                color:'#FAB1A0',
+                fontWeight:'bold',
+                fontSize:15,
+              }}>GO HOME</Text>
               </TouchableOpacity>
               
               

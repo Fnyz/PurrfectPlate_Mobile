@@ -13,7 +13,7 @@ import { ALERT_TYPE, Dialog, AlertNotificationRoot } from 'react-native-alert-no
 import {useForm, Controller} from 'react-hook-form';
 import DropDownPicker from "react-native-dropdown-picker";
 import moment from 'moment';
-
+import PurrfectPlateLoadingScreen from './components/PurrfectPlateLoadingScreen';
 
 
 const db = getFirestore(app);
@@ -22,6 +22,7 @@ const db = getFirestore(app);
 const DetailsPage = ({route, navigation}) => {
   const {image, Weight, Gender, Age, Petname, date, DeviceName, id, GoalWeight} = route.params;
 
+  const [loads, setloads] = useState(false)
   const [w, setW] = useState(null);
   const [a, setA] = useState(null);
   const [n, setN] = useState(null);
@@ -38,6 +39,10 @@ const DetailsPage = ({route, navigation}) => {
   ]);
 
   useEffect(()=>{
+    setloads(true);
+    setTimeout(() => {
+      setloads(false)
+    }, 3000);
    setW(Weight);
    setGender(Gender),
    setA(Age),
@@ -106,13 +111,20 @@ const DetailsPage = ({route, navigation}) => {
   }
 
   const { control } = useForm();
+
+  if(loads){
+    return (
+      <PurrfectPlateLoadingScreen message={"Please wait.."} fontSize={25} />
+    )
+  }
+
   
   
   return (
 
     <AlertNotificationRoot theme='dark'>
 
-
+  
     <SafeAreaView>
         <ImageBackground source={require('../assets/Image/FirstPage.png')}>
         <View style={{
@@ -236,32 +248,7 @@ const DetailsPage = ({route, navigation}) => {
     />
 
 
-       <TouchableOpacity style={{
-        marginTop:12,
-        marginLeft:5,
-        flexDirection:'row',
-        alignItems:'center',
-        gap:6,
-       }}>
-       
-       <Image
-        style={{
-          width:30,
-          height:30,
-          opacity:0.9,
-          
-        }}
-        source={require('../assets/Image/dog-food.png')}
-        contentFit="cover"
-        transition={1000}
-      />
-        <Text style={{
-          fontWeight:'bold',
-          color:'red',
-          opacity:0.6,
-          fontSize:17,
-        }}>FEED PET</Text>
-       </TouchableOpacity>
+  
         </View>
         <View style={{
           borderWidth:1,

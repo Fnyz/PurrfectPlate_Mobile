@@ -17,6 +17,9 @@ import { getAuth, signOut } from "firebase/auth";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Modal from "react-native-modal";
 import ListPet from './components/ListPet';
+import PurrfectPlateLoadingScreen from './components/PurrfectPlateLoadingScreen';
+import {useForm, Controller, set} from 'react-hook-form';
+import DropDownPicker from "react-native-dropdown-picker";
 
 
 
@@ -53,9 +56,21 @@ const DashBoard = ({navigation,route: {params: { credentials }}}) => {
 
   const [profile, setProfileData] = useState({});
   const [listOfPet, setListOfPet] = useState([]);
+  const [listOfPet1, setListOfPet1] = useState([]);
   const [search, setSearchData] = useState('');
   const isDrawerOpen = useDrawerStatus() === 'open';
+  const [loading, setLoading ] =useState(false)
   const [visible, setVisible] = useState(false)
+  const [forFilter, setForFilter] = useState(false)
+  const [forSeach, setForSeach] = useState(false)
+  const [hide, setHidden] = useState(true)
+  const [gender, setGenders] = useState([
+    { label: "", value: "" },
+  ]);
+  
+  const [genderOpen, setGenderOpen] = useState(false);
+  const[Gender, setGender] = useState('');
+
   const handleOpenDrawer = () => {
     navigation.openDrawer();
   }
@@ -88,10 +103,42 @@ const DashBoard = ({navigation,route: {params: { credentials }}}) => {
   },[])
 
 
+  useEffect(()=> {
+    const getPettypes = async () => {
+      const user = await AsyncStorage.getItem("Credentials");
+      const datas = JSON.parse(user);
+      if(user){
+        const q = query(collection(db, "List_of_Pets"), where("DeviceName", "==", datas.DeviceName.trim()));
+        onSnapshot(q, (querySnapshot) => {
+       const data = [];
+       querySnapshot.forEach((docs) => {
+           data.push({dt:docs.data(), id: docs.id});
+       });
+       
+       setListOfPet1(data);
+       const a = [ "All", ...Array.from(new Set(data.map(d => d.dt.petType)))];
+       const b = a.map(c => {
+        return {
+          label:c.toUpperCase(),
+          value: c.toLowerCase()
+        }
+       })       
+
+       setGenders(b);
+       
+     });
+        return;
+      }
+    }
+
+    getPettypes();
+  }, [])
+
+
 
 
   useEffect(()=> {
-
+  
     if(search.length === 0){
       
       const q = query(collection(db, "List_of_Pets"), where("DeviceName", "==", credentials.DeviceName.trim()), orderBy("Created_at", "desc"));
@@ -123,13 +170,16 @@ const DashBoard = ({navigation,route: {params: { credentials }}}) => {
  
 
   useEffect(()=>{
-   
+     setLoading(true);
+     setTimeout(() => {
+      setLoading(false)
+     }, 3000);
   const q = query(collection(db, "List_of_Pets"), where("DeviceName", "==", credentials.DeviceName.trim()), orderBy("Created_at", "desc"));
    onSnapshot(q, (querySnapshot) => {
   const data = [];
   querySnapshot.forEach((docs) => {
       data.push({dt:docs.data(), id: docs.id});
-      console.log(docs.data());
+   
   });
   
   setListOfPet(data);
@@ -138,9 +188,31 @@ const DashBoard = ({navigation,route: {params: { credentials }}}) => {
   },[])
 
 
+  const onGenderOpen = useCallback(() => {
+
+  }, []);
+
+ 
 
 
-  
+ 
+
+
+  const { control } = useForm();
+ 
+
+
+  if(false){
+    return (
+      <PurrfectPlateLoadingScreen message={"WELCOME TO PURRFECT PLATE"} fontSize={20} />
+    )
+  }
+
+
+
+
+
+ 
 
 
   return (
@@ -280,6 +352,7 @@ const DashBoard = ({navigation,route: {params: { credentials }}}) => {
           paddingLeft:5,
           paddingTop:3,
           elevation:3,
+   
         }}
         />
         )}
@@ -287,15 +360,164 @@ const DashBoard = ({navigation,route: {params: { credentials }}}) => {
       
       </View>
         </View>
+        {hide && (
+   <View style={{
+    width:'100%',
+    padding:2,
+    justifyContent:'center',
+    alignItems:'center',
+    flexDirection:'row',
+    gap:10,
+    marginTop:15,
+  }}>
+    <TouchableOpacity style={{
+ 
+      width:'50%',
+      paddingHorizontal:20,
+      paddingVertical:15,
+      justifyContent:'center',
+      alignItems:'center',
+      flexDirection:'row',
+      borderTopLeftRadius:10,
+      borderBottomLeftRadius:10,
+      backgroundColor:'#FAB1A0',
+      gap:6,
+    }} onPress={()=> {
+      setForFilter(true);
+      setHidden(false);
+    }}>
+      <Ionicons name="filter" size={20} color="white" />
+      <Text style={{
+        color:'white',
+        fontWeight:'bold',
+      }}>FILTER BY TYPE</Text>
+    </TouchableOpacity>
+    <TouchableOpacity  style={{
+ 
+ width:'50%',
+ paddingHorizontal:20,
+ paddingVertical:15,
+ justifyContent:'center',
+ alignItems:'center',
+ flexDirection:'row',
+ borderTopRightRadius:10,
+ borderBottomRightRadius:10,
+ backgroundColor:'#FAB1A0',
+ gap:6,
+}} onPress={()=> {
+  setForSeach(true);
+  setHidden(false);
+}}><AntDesign name="search1" size={20} color="white" />
+      <Text  style={{
+        color:'white',
+        fontWeight:'bold',
+      }}>SEARCH PET</Text>
+    </TouchableOpacity>
+  </View>
+        )}
+
+
+
+         
+      {forFilter && (
+        <View style={{
+          flexDirection:'row',
+          justifyContent:'center',
+          alignItems:'center',
+          width:'100%',
+          padding:2,
+          gap:8,
+          marginTop:10,
+        }}>
+  <Controller
+        name="gender"
+        defaultValue=""
+        control={control}
+        render={({ field: { onChange, value } }) => (
+          <View style={{ 
+            width: "88%",
+            marginTop:5,
+            }}>
+            <DropDownPicker
+              style={{borderColor: "#B7B7B7",
+              height: 50}}
+              open={genderOpen}
+              value={Gender} 
+              items={gender}
+              setOpen={setGenderOpen}
+              setValue={setGender}
+              placeholder="Select Gender"
+              placeholderStyle={{
+                color: "grey",
+              }}
+              onOpen={onGenderOpen}
+              onChangeValue={onChange}
+              zIndex={3000}
+              zIndexInverse={1000}
+            />
+          </View>
+        )}
+      />
+
+  <TouchableOpacity style={{
+    width:'12%',
+    elevation:2,
+    paddingVertical:12,
+    flexDirection:'row',
+    justifyContent:'center',
+    alignItems:'center',
+    borderRadius:10,
+    backgroundColor:'#FAB1A0'
+  }} onPress={()=>{
+    setHidden(true);
+    setForFilter(false);
+  }}>
+  <AntDesign name="close" size={24} color="white" />
+  </TouchableOpacity>
+        </View>
+  )}
+    
+
+
+
      
-      <Searchbar
-      placeholder="Search"
-      style={{
-        marginTop:10,
-      }}
-      value={search}
-      onChangeText={(val) => setSearchData(val)}
-    />
+      {forSeach && (
+        <View style={{
+          flexDirection:'row',
+          justifyContent:'center',
+          alignItems:'center',
+          width:'100%',
+          padding:2,
+          gap:8,
+          marginTop:10,
+        }}>
+  <Searchbar
+  placeholder="Search"
+  style={{
+
+    width:'90%'
+  }}
+  value={search}
+  onChangeText={(val) => setSearchData(val)}
+/>
+  <TouchableOpacity style={{
+    width:'12%',
+    elevation:2,
+    paddingVertical:12,
+    flexDirection:'row',
+    justifyContent:'center',
+    alignItems:'center',
+    borderRadius:10,
+    backgroundColor:'#FAB1A0'
+  }} onPress={()=>{
+    setHidden(true);
+    setForSeach(false);
+  }}>
+  <AntDesign name="close" size={24} color="white" />
+  </TouchableOpacity>
+        </View>
+  )}
+    
     <View style={{
         flexDirection:'row',
         justifyContent:'space-between',
@@ -321,7 +543,7 @@ const DashBoard = ({navigation,route: {params: { credentials }}}) => {
         height:230,
     }}>
        
-<Button title="Play Sound" onPress={playSound} />
+
          <Swiper 
           autoplay 
           loop
@@ -451,7 +673,9 @@ const DashBoard = ({navigation,route: {params: { credentials }}}) => {
         contentContainerStyle={{
             justifyContent:'space-between',
             alignItems:'center',
-            gap:5
+            gap:5,
+            width:'100%',
+       
         }}
       />
       

@@ -19,6 +19,7 @@ import {useForm, Controller} from 'react-hook-form';
 import DropDownPicker from "react-native-dropdown-picker";
 import { petsData } from '../animeData';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import PurrfectPlateLoadingScreen from './components/PurrfectPlateLoadingScreen';
 
 
 const Box = React.memo(({Cat, Dog, image, handleCloseModal, pickImage, handlePickImage, click, handleSave}) => {
@@ -176,7 +177,7 @@ const db = getFirestore(app)
 
 const AddPets= ({navigation}) => {
 
-
+  const [loads, setloads] = useState(false)
   const [catData, setCatData] = useState([]);
   const [dogData, setDogData] = useState([]);
   const[petName, setPetname] = useState('');
@@ -220,6 +221,10 @@ const AddPets= ({navigation}) => {
   }
 
   useEffect(()=> {
+    setloads(true);
+    setTimeout(() => {
+      setloads(false)
+    }, 3000);
     getUserData();
   },[])
 
@@ -422,6 +427,15 @@ const AddPets= ({navigation}) => {
   const handleOpenDrawer = useCallback(() => {
     navigation.openDrawer();
   },[navigation])
+
+  if(loads){
+    return (
+      <PurrfectPlateLoadingScreen message={"Please wait.."} fontSize={25} />
+    )
+  }
+
+
+
   
 
   return (

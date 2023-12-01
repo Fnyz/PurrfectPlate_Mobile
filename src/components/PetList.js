@@ -14,7 +14,7 @@ const PetList = ({navigation, dt, id}) => {
         padding:10,
         margin:5,
         elevation:1,
-        width:176,
+        width:170,
     }}>
         <View style={{
             overflow:'hidden',
@@ -79,11 +79,10 @@ const PetList = ({navigation, dt, id}) => {
         </Text>
       </View>
       <TouchableOpacity style={{
-        backgroundColor:'#908EDF',
-        width:52,
-        justifyContent:'space-between',
-        alignItems:'center',
-        borderBottomRightRadius:5,
+        width:42,
+        flexDirection:'column',
+        justifyContent:'center',
+        alignItems:'flex-end',
         opacity:0.7,
       }} onPress={()=>navigation.navigate('DetailsPage',{
         image,
@@ -96,7 +95,7 @@ const PetList = ({navigation, dt, id}) => {
         date:Created_at,
         id:id
       })}>
-      <MaterialCommunityIcons name="view-list" size={45} color="white" />
+      <MaterialCommunityIcons name="view-list" size={42} color="#908EDF" />
       </TouchableOpacity>
    
       </View>

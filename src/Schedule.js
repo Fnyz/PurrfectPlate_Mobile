@@ -18,6 +18,7 @@ import {Image} from 'expo-image'
 import PetListSched from './components/PetListSched';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {Dimensions} from 'react-native';
+import PurrfectPlateLoadingScreen from './components/PurrfectPlateLoadingScreen';
 
 
 
@@ -47,7 +48,7 @@ const Schedule = ({navigation}) => {
   const [timeOnly, setTimeOnly] = useState('');
   const [company, setComapny] = useState([]);
   const [updatingProccess, setUpdatingProccess] = useState(false);
-  const [click, setClick] = useState(false);
+  const [loads, setloads] = useState(false)
 
 
 
@@ -86,6 +87,7 @@ const Schedule = ({navigation}) => {
 
 
   useEffect(()=>{
+  
     getAllDatas();
     getAllNameOfPets();
   },[])
@@ -109,6 +111,10 @@ const Schedule = ({navigation}) => {
   }
 
   useEffect(()=> {
+    setloads(true);
+    setTimeout(() => {
+      setloads(false)
+    }, 3000);
     getUserData();
   },[])
 
@@ -425,7 +431,11 @@ const Schedule = ({navigation}) => {
 
 
   
-  
+  if(loads){
+    return (
+      <PurrfectPlateLoadingScreen message={"Please wait.."} fontSize={25} />
+    )
+  }
 
 
   return (

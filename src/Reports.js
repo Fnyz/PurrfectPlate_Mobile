@@ -16,7 +16,7 @@ import { FontAwesome } from '@expo/vector-icons';
 import { Badge } from 'react-native-paper';
 import { Avatar } from 'react-native-paper';
 import moment from 'moment';
-
+import PurrfectPlateLoadingScreen from './components/PurrfectPlateLoadingScreen';
 const db = getFirestore(app);
 
 const Reports = ({navigation}) => {
@@ -24,7 +24,7 @@ const Reports = ({navigation}) => {
   const flatListRef = useRef();
 
   const [email, setEmail] = useState('');
-
+  const [loads, setloads] = useState(false)
   const [message, setMessage] = useState('');
   const [deviceName, setDeviceName] = useState('');
   const [visible, setVisible] = useState(false);
@@ -62,6 +62,10 @@ const Reports = ({navigation}) => {
   }
 
   useEffect(()=> {
+    setloads(true);
+    setTimeout(() => {
+      setloads(false)
+    }, 3000);
     getUserData();
   },[])
 
@@ -349,6 +353,14 @@ const renderItems = () => {
 
 
 useMemo(()=> dataMessage(messageData, data.email), [messageData, data.email]);
+
+
+if(loads){
+  return (
+    <PurrfectPlateLoadingScreen message={"Please wait.."} fontSize={25} />
+  )
+}
+
   
   return (
 

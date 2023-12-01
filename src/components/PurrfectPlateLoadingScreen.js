@@ -1,25 +1,30 @@
-import { View, Text } from 'react-native'
+import { View, Text, ActivityIndicator } from 'react-native'
 import React from 'react'
 import LottieView from 'lottie-react-native'; 
 
-const PurrfectPlateLoadingScreen = () => {
+const PurrfectPlateLoadingScreen = ({message, fontSize}) => {
   return (
     <View style={{
-        marginTop:50,
+        justifyContent: 'center',
         alignItems:'center',
         flex:1,
+ 
     }}>
      <LottieView style={{
-        width:350,
+        width:300,
+       
+     }} source={require("../../assets/Image/dsdds.json")} autoPlay loop/>
+  
+      <Text style={{
+        color:'coral',
+        fontSize:fontSize,
         opacity:0.8,
-     }} source={require('../assets/animation/78631-searching.json')} autoPlay loop/>
-     <Text style={{
-        color:'white',
-        fontSize:20,
-        opacity:0.8,
-        fontWeight:'bold'
-     }}>Please wait... 
+        fontWeight:'bold',
+        marginTop:10,
+     }}>{message}
      </Text>
+ 
+  
     
     </View>
   )

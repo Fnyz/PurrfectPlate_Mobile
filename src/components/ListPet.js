@@ -2,10 +2,10 @@ import { View, Text, TouchableOpacity } from 'react-native'
 import React from 'react'
 import { Image } from 'expo-image';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-
+import moment from 'moment/moment';
 const ListPet = ({navigation, dt, id, setVisible}) => {
 
-  const {image,Petname, Weight, Gender, Age, DeviceName, GoalWeight} = dt
+  const {image,Petname, Weight, Gender, Age, DeviceName, GoalWeight, Created_at} = dt
 
   return (
     <View style={{
@@ -49,7 +49,8 @@ const ListPet = ({navigation, dt, id, setVisible}) => {
       <View style={{
         gap:10,
         justifyContent:'center',
-        alignItems:'center',
+        alignItems:'flex-end',
+        width:100,
       }}>
       <TouchableOpacity style={{
         backgroundColor:'#908EDF',
@@ -57,6 +58,7 @@ const ListPet = ({navigation, dt, id, setVisible}) => {
         justifyContent:'space-between',
         alignItems:'center',
         opacity:0.7,
+
       }} onPress={()=>
         {
             navigation.navigate('DetailsPage',{
@@ -77,11 +79,11 @@ const ListPet = ({navigation, dt, id, setVisible}) => {
       <MaterialCommunityIcons name="view-list" size={45} color="white" />
       </TouchableOpacity>
       <Text style={{
-        fontSize:12,
+        fontSize:10,
         color:'red',
         fontWeight:'bold',
         opacity:0.5
-      }} >06/19/2020</Text>
+      }} >{moment(Created_at.toDate()).calendar()}</Text>
       </View>
       </View>
     
