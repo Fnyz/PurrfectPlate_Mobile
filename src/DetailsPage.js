@@ -6,7 +6,7 @@ import { TextInput } from 'react-native-paper';
 import { Entypo } from '@expo/vector-icons';
 import { AntDesign } from '@expo/vector-icons';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { doc, updateDoc, getFirestore,  deleteDoc} from "firebase/firestore";
+import { doc, updateDoc, getFirestore,  deleteDoc,  collection, query, where, onSnapshot} from "firebase/firestore";
 import app from './firebase';
 import Modal from "react-native-modal";
 import { ALERT_TYPE, Dialog, AlertNotificationRoot } from 'react-native-alert-notification';
@@ -14,6 +14,7 @@ import {useForm, Controller} from 'react-hook-form';
 import DropDownPicker from "react-native-dropdown-picker";
 import moment from 'moment';
 import PurrfectPlateLoadingScreen from './components/PurrfectPlateLoadingScreen';
+
 
 
 const db = getFirestore(app);
@@ -88,11 +89,22 @@ const DetailsPage = ({route, navigation}) => {
     }
   }
 
-  HandleDelete = async () => {
+
+
+  const HandleDelete = () => {
+
     setVisible(true)
     setChange(true)
-    try {
-      await deleteDoc(doc(db, "List_of_Pets", id));
+      deleteDoc(doc(db, "List_of_Pets", id)).then(()=>{
+    const q = query(collection(db, "feeding_schedule"), where("Petname", "==", Petname.trim()), where("DeviceName", "==", DeviceName.trim()));
+    onSnapshot(q, (querySnapshot) => {
+     querySnapshot.forEach((docs) => {
+      deleteDoc(doc(db, "feeding_schedule", docs.id));
+     });
+    
+   });
+
+      })
       setVisible(false)
       setChange(false)
       Dialog.show({
@@ -104,11 +116,11 @@ const DetailsPage = ({route, navigation}) => {
       setTimeout(() => {
         navigation.goBack();
       }, 3000);
-    } catch (error) {
-      console.log('Something went wrong!');
-      
-    }
+ 
+  
   }
+
+
 
   const { control } = useForm();
 
@@ -271,7 +283,7 @@ const DetailsPage = ({route, navigation}) => {
           borderColor:'#FAB1A0',
           flexDirection:'row',
           gap:5,
-        }}>
+        }} onPress={HandleDelete}>
           <Entypo name="trash" size={20} color="#FAB1A0" />
           <Text style={{
             color:'#FAB1A0',

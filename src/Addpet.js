@@ -1,16 +1,16 @@
-import { View, Text, ImageBackground , TouchableOpacity, ActivityIndicator, ScrollView} from 'react-native'
+import { View, Text, ImageBackground , TouchableOpacity, ActivityIndicator, ScrollView, Button} from 'react-native'
 import React, { useCallback, useEffect, useState } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Avatar } from 'react-native-paper';
 import { TextInput } from 'react-native-paper';
 import { AntDesign } from '@expo/vector-icons';
-import { FontAwesome5 } from '@expo/vector-icons';
+import { FontAwesome5, Entypo  } from '@expo/vector-icons';
 import { Ionicons } from '@expo/vector-icons';
 import { Feather } from '@expo/vector-icons';
 import { FontAwesome } from '@expo/vector-icons';
 import { useDrawerStatus } from '@react-navigation/drawer';
 import * as ImagePicker from 'expo-image-picker';
-import { collection, addDoc, getFirestore, query, onSnapshot, serverTimestamp } from "firebase/firestore";
+import { collection, addDoc, getFirestore, query, onSnapshot, serverTimestamp, setDoc, doc } from "firebase/firestore";
 import app from './firebase';
 import Modal from "react-native-modal";
 import {Image} from 'expo-image'
@@ -20,6 +20,7 @@ import DropDownPicker from "react-native-dropdown-picker";
 import { petsData } from '../animeData';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import PurrfectPlateLoadingScreen from './components/PurrfectPlateLoadingScreen';
+import { Audio } from 'expo-av';
 
 
 const Box = React.memo(({Cat, Dog, image, handleCloseModal, pickImage, handlePickImage, click, handleSave}) => {
@@ -210,6 +211,11 @@ const AddPets= ({navigation}) => {
     { label: "Cat", value: "cat" },
     { label: "Specified pet type", value: "specified" },
   ]
+  const [recording, setRecording] = React.useState();
+  const [recordsound, setSound] = React.useState("");
+  const [play, setPlay] = React.useState(false)
+  const [needRec, setNeedRec] = React.useState(false)
+  const [petRecord, setPetRecord] = React.useState("");
 
 
 
@@ -325,11 +331,7 @@ const AddPets= ({navigation}) => {
   }
 
   handleSubmit = async () => {
-
-    
     setShow(true);
-
-
     if(!petName || !Gender || !Rfid || !Weight || !GoalWeight || !Age || !petType){
       setShow(false)
       Dialog.show({
@@ -341,11 +343,23 @@ const AddPets= ({navigation}) => {
       return;
     }
 
+    if(!petRecord){
+      setShow(false)
+      Dialog.show({
+        type: ALERT_TYPE.DANGER,
+        title: 'Warning!',
+        textBody: 'Please provide the recording file for the pet.',
+        button: 'close',
+      })
+      return;
+    }
+
+
      const res = datas.find(d => d?.Petname.toLowerCase().trim() === petName.toLowerCase().trim() && d?.DeviceName.toLowerCase().trim() === deviceName.toLowerCase().trim());
     
      if(!res){
       
-      const addListPet = await addDoc(collection(db, "List_of_Pets"), {
+      const addListPet = await setDoc(doc(db, "List_of_Pets", deviceName), {
         DeviceName:deviceName.trim(),
         Petname: petName,
         Gender,
@@ -356,31 +370,51 @@ const AddPets= ({navigation}) => {
         petType:petType.toLowerCase().trim(),
         image,
         synced:false,
+        audioBase64:petRecord,
         Created_at: serverTimestamp(),
         Updated_at: serverTimestamp(),
       });
 
       if(addListPet.id){
-        await addDoc(collection(db, "Task"), {
+        const a =  addDoc(collection(db, "Petbackup_data"),  {
+          DeviceName:deviceName.trim(),
+          Petname: petName,
+          Gender,
+          Rfid,
+          Weight,
+          GoalWeight,
+          Age,
+          petType:petType.toLowerCase().trim(),
+          image,
+          synced:false,
+          audioBase64:petRecord,
+          Created_at: serverTimestamp(),
+          Updated_at: serverTimestamp(),
+        });
+       const b =  addDoc(collection(db, "Task"), {
           type:'refresh_pet',
           deviceName:deviceName.trim(),
           document_id:addListPet.id,
           request:null,
         });
-        setShow(false);
-        setPetname('');
-        setGender('');
-        setSetGoalWeight('');
-        setAge('');
-        setRfid('');
-        setWeight('');
-        setPetType('')
-        Dialog.show({
-          type: ALERT_TYPE.SUCCESS,
-          title: 'SUCCESS',
-          textBody: 'Add pet successfully.',
-          button: 'close',
-        })
+
+       await Promise.all([a, b]).then(() => {
+          setShow(false);
+          setPetname('');
+          setGender('');
+          setSetGoalWeight('');
+          setAge('');
+          setRfid('');
+          setWeight('');
+          setPetType('')
+          Dialog.show({
+            type: ALERT_TYPE.SUCCESS,
+            title: 'SUCCESS',
+            textBody: 'Add pet successfully.',
+            button: 'close',
+          })
+        });
+      
       }
 
       return;
@@ -428,7 +462,109 @@ const AddPets= ({navigation}) => {
     navigation.openDrawer();
   },[navigation])
 
-  if(loads){
+
+  async function startRecording() {
+    try {
+      console.log('Requesting permissions..');
+      await Audio.requestPermissionsAsync();
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+      });
+
+      console.log('Starting recording..');
+      const { recording } = await Audio.Recording.createAsync( Audio.RecordingOptionsPresets.HIGH_QUALITY
+      );
+     
+      setRecording(recording);
+      console.log('Recording started');
+    } catch (err) { 
+      console.error('Failed to start recording', err);
+    }
+  }
+
+  async function stopRecording() {
+    console.log('Stopping recording..');
+    setRecording(undefined);
+    await recording.stopAndUnloadAsync();
+    await Audio.setAudioModeAsync(
+      {
+        allowsRecordingIOS: false,
+      }
+    );
+    const uri = recording.getURI();
+    console.log('Recording stopped and stored at', uri);
+    setSound(uri)
+  
+   
+
+    const blobToBase64 = (blob) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(blob);
+      return new Promise((resolve) => {
+        reader.onloadend = () => {
+          resolve(reader.result);
+        };
+      });
+    };
+  
+    const audioURI = recording.getURI();
+    console.log(audioURI)
+    const blob = await new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.onload = function () {
+        resolve(xhr.response);
+      };
+      xhr.onerror = function (e) {
+        reject(new TypeError("Network request failed"));
+      };
+      xhr.responseType = "blob";
+      xhr.open("GET", audioURI, true);
+      xhr.send(null);
+    });
+  
+    const audioBase64 = await blobToBase64(blob);
+    setPetRecord(audioBase64);
+
+
+
+ 
+    
+  }
+
+
+
+  async function playRecording() {
+    try {
+      const { sound, status } = await Audio.Sound.createAsync(
+        { uri: recordsound },
+        { shouldPlay: true, isLooping: false },
+        onPlaybackStatusUpdate
+      );
+      
+      console.log('Playing recorded sound');
+      setPlay(true);
+    } catch (error) {
+      console.error('Error playing recorded sound', error);
+    }
+  }
+
+  function onPlaybackStatusUpdate(status) {
+    if (status.didJustFinish) {
+      // The playback has finished
+      setPlay(false);
+      setSound('');
+      console.log('Playback finished');
+   
+    }
+  }
+  
+
+  
+
+
+
+  if(false){
     return (
       <PurrfectPlateLoadingScreen message={"Please wait.."} fontSize={25} />
     )
@@ -482,7 +618,6 @@ const AddPets= ({navigation}) => {
       gap:10,
       justifyContent:'center',
       alignItems:'center',
-      marginTop:30,
       width:'100%',
   
 
@@ -513,7 +648,8 @@ const AddPets= ({navigation}) => {
       marginTop:20,
       gap:5,
       width:'100%',
-   
+  
+    
     }}>
     <TextInput
       label="Pet name"
@@ -771,6 +907,27 @@ const AddPets= ({navigation}) => {
       }}
       onChangeText={(val) => setAge(val)} 
     />
+    <View style={{
+      flexDirection:'row',
+      justifyContent: 'center',
+      alignItems:'center',
+      gap:5,
+      marginVertical:5,
+    }}>
+    <Text style={{
+      fontWeight:'bold',
+      opacity:0.7
+    }}>Record voice on how you call your pet.</Text>
+    <TouchableOpacity onPress={()=> setNeedRec(true)}>
+    <Text style={{
+      color:'red',
+      fontWeight:'bold',
+      fontStyle:'italic',
+      opacity:0.8
+    }}>Click here.</Text>
+    </TouchableOpacity>
+    </View>
+ 
 
     <View style={{
       marginTop:10,
@@ -880,6 +1037,109 @@ const AddPets= ({navigation}) => {
         handleSave={handleSave}
         click={click}
          />
+       </Modal>
+
+       <Modal isVisible={needRec} animationIn='slideInLeft' animationOut='fadeOut'>
+       <View style={{
+        width:'100%',
+        borderRadius:10,
+        height:recordsound ? 230 : 130,
+        backgroundColor:'white',
+        padding:10,
+        flexDirection:'column',
+        gap:15,
+       }}>
+        <View>
+          <View style={{
+            flexDirection:'row',
+            justifyContent:'space-between',
+            alignItems: 'center',
+          }}>
+          <Text style={{
+          fontSize:20,
+          fontWeight:'bold',
+        }}>Add Recording</Text>
+        <TouchableOpacity onPress={()=>{
+setNeedRec(false);
+}}>
+        <AntDesign name="close" size={20} color="red" />
+        </TouchableOpacity>
+          </View>
+      
+        <Text style={{
+          opacity:0.5
+        }}>Click the button below to start recording.</Text>
+        </View>
+      
+        <TouchableOpacity style={{
+          width:'100%',
+          paddingVertical:12,
+          backgroundColor:'#FAB1A0',
+          alignItems:'center',
+          borderRadius:5,
+          justifyContent:'center',
+          flexDirection:'row',
+          gap:10
+        }} disabled={play ? true: false}  onPress={recording ? stopRecording : startRecording}>
+          {recording ? <>
+            <FontAwesome name="pause" size={17} color="white" />
+          <Text style={{
+            fontSize:20,
+            fontWeight:'bold',
+            color:'white'
+          }}>Stop Recording</Text>
+          </>: <>
+          <Entypo name="controller-record" size={17} color="white" />
+          <Text style={{
+            fontSize:20,
+            fontWeight:'bold',
+            color:'white'
+          }}>Start Recording</Text>
+          </>}
+        </TouchableOpacity>
+        {recordsound && (
+          <>
+           <Text style={{
+          fontWeight:'bold',
+          opacity:0.5
+        }}>Listen your recording here:</Text>
+        <TouchableOpacity style={{
+          width:'100%',
+          paddingVertical:12,
+          borderWidth:1,
+          borderColor:'#FAB1A0',
+          alignItems:'center',
+          borderRadius:5,
+          justifyContent:'center',
+          flexDirection:'row',
+          gap:10
+        }} disabled={play ? true: false}   onPress={playRecording}>
+          {play ? <>
+            <ActivityIndicator animating={true} color='#FAB1A0' size={20} />
+          <Text style={{
+            fontSize:20,
+            fontWeight:'bold',
+            color:'#FAB1A0'
+          }}> Sound Playing...</Text>
+          </>: <>
+          <FontAwesome name="play" size={17} color="#FAB1A0" />
+          <Text style={{
+            fontSize:20,
+            fontWeight:'bold',
+            color:'#FAB1A0'
+          }}>Play Recording</Text>
+          </>}
+        </TouchableOpacity>
+          </>
+
+        )}
+       
+
+        <View>
+    
+    </View>
+
+       </View>
        </Modal>
     
 

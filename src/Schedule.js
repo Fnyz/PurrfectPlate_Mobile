@@ -73,8 +73,10 @@ const Schedule = ({navigation}) => {
 });
   }
 
-  const getAllNameOfPets = () => {
-    const q = query(collection(db, "List_of_Pets"));
+  const getAllNameOfPets = async () => {
+    const jsonValue = await AsyncStorage.getItem('Credentials');
+    const credential = JSON.parse(jsonValue);
+    const q = query(collection(db, "List_of_Pets"), where('DeviceName', "==", credential.DeviceName.trim()));
    onSnapshot(q, (querySnapshot) => {
   const forPetName = [];
   querySnapshot.forEach((doc) => {
@@ -331,7 +333,7 @@ const Schedule = ({navigation}) => {
 
    //trace if that schedule is already exists
     const res  = petData.find(d => d.data.Days === day.trim() && d.data.DeviceName === deviceName);
-      const exist = res.data.ScheduleTime.find(a => timeToMinutes(a.time) === timeToMinutes(timeOnly) && a.parameters.toLowerCase().trim() ===  formattedTime.split(" ")[1].toLowerCase().trim() );
+      const exist = res?.data.ScheduleTime.find(a => timeToMinutes(a.time) === timeToMinutes(timeOnly) && a.parameters.toLowerCase().trim() ===  formattedTime.split(" ")[1].toLowerCase().trim() );
   
     if(exist){
     

@@ -69,7 +69,7 @@ const DashBoard = ({navigation,route: {params: { credentials }}}) => {
   ]);
   
   const [genderOpen, setGenderOpen] = useState(false);
-  const[Gender, setGender] = useState('');
+  const[Gender, setGender] = useState('all');
 
   const handleOpenDrawer = () => {
     navigation.openDrawer();
@@ -81,7 +81,7 @@ const DashBoard = ({navigation,route: {params: { credentials }}}) => {
   getUserProfile = async () => {
 
     onSnapshot(doc(db, "users", credentials.userId), (doc) => {
-       setProfileData(doc.data());
+       setProfileData(doc?.data());
      });
   }
 
@@ -137,16 +137,32 @@ const DashBoard = ({navigation,route: {params: { credentials }}}) => {
 
 
 
+
+
   useEffect(()=> {
   
     if(search.length === 0){
       
-      const q = query(collection(db, "List_of_Pets"), where("DeviceName", "==", credentials.DeviceName.trim()), orderBy("Created_at", "desc"));
+      if(Gender === "all"){
+        const q = query(collection(db, "List_of_Pets"), where("DeviceName", "==", credentials.DeviceName.trim()), orderBy("Created_at", "desc"));
+        onSnapshot(q, (querySnapshot) => {
+       const data = [];
+       querySnapshot.forEach((docs) => {
+           data.push({dt:docs.data(), id: docs.id});
+       });
+       
+       setListOfPet(data);
+       
+     });
+        return;
+      }
+
+      const q = query(collection(db, "List_of_Pets"), where("DeviceName", "==", credentials.DeviceName.trim()),where("petType", "==", Gender.trim()) , orderBy("Created_at", "desc"));
       onSnapshot(q, (querySnapshot) => {
      const data = [];
      querySnapshot.forEach((docs) => {
          data.push({dt:docs.data(), id: docs.id});
-
+    
      });
      
      setListOfPet(data);
@@ -163,7 +179,7 @@ const DashBoard = ({navigation,route: {params: { credentials }}}) => {
 
     setListOfPet(result);
     
-  },[search])
+  },[search, Gender])
 
   
 
@@ -446,7 +462,7 @@ const DashBoard = ({navigation,route: {params: { credentials }}}) => {
               items={gender}
               setOpen={setGenderOpen}
               setValue={setGender}
-              placeholder="Select Gender"
+              placeholder="Filter by type"
               placeholderStyle={{
                 color: "grey",
               }}
