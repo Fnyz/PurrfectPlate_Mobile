@@ -28,7 +28,7 @@ const db  = getFirestore(app);
 const windowWidth = Dimensions.get('window').width;
 const windowHeight = Dimensions.get('window').height;
 
-const Schedule = ({navigation}) => {
+const Schedule = ({navigation, route}) => {
 
   
   const [openPetName, setPetOpen] = useState(false);
@@ -49,6 +49,8 @@ const Schedule = ({navigation}) => {
   const [company, setComapny] = useState([]);
   const [updatingProccess, setUpdatingProccess] = useState(false);
   const [loads, setloads] = useState(false)
+  const [petNames, setPetnames] = useState('');
+  const [userData,setUserData] = useState({});
 
 
 
@@ -89,9 +91,12 @@ const Schedule = ({navigation}) => {
 
 
   useEffect(()=>{
-  
+    setPetnames(route.params.petnames);
     getAllDatas();
     getAllNameOfPets();
+
+   
+ 
   },[])
 
 
@@ -103,13 +108,16 @@ const Schedule = ({navigation}) => {
 
   handleSeePetSchedule = () => {
    setModal(true);
-   getSchedule(petNameVal);
+   getSchedule(petNameVal || petNames);
+   setPetnameValue(petNameVal || petNames);
+
   }
 
   const getUserData = async () => {
     const jsonValue = await AsyncStorage.getItem('Credentials');
     const credential = JSON.parse(jsonValue);
     setDeviceName(credential.DeviceName.trim());
+    setUserData(credential);
   }
 
   useEffect(()=> {
@@ -118,6 +126,8 @@ const Schedule = ({navigation}) => {
       setloads(false)
     }, 3000);
     getUserData();
+
+ 
   },[])
 
 
@@ -241,7 +251,7 @@ const Schedule = ({navigation}) => {
     }
 
 
-    const res = petData.find(d => d.data.Days.toLowerCase().trim() === day.toLowerCase().trim() && d.data.DeviceName.toLowerCase().trim() === deviceName.toLowerCase().trim());
+    const res = petData.find(d => d.data.Days.toLowerCase().trim() === day.toLowerCase().trim() && d.data.DeviceName.toLowerCase().trim() === deviceName.toLowerCase().trim() && d.data.Petname.trim().toLowerCase() === petNameVal.trim().toLowerCase());
 
        if(!res){
         const docRef = await addDoc(collection(db, "feeding_schedule"), petSchedule);
@@ -312,6 +322,7 @@ const Schedule = ({navigation}) => {
 
 
   const addFoodItem = () => {
+
     if (!caps|| !formattedTime) {
       Dialog.show({
         type: ALERT_TYPE.DANGER,
@@ -322,6 +333,8 @@ const Schedule = ({navigation}) => {
       // Prevent adding empty entries
       return;
     }
+
+    setPetnames('');
 
     const timeToMinutes = (timeStr) => {
       const [hours, minutes] = timeStr.split(':').map(Number);
@@ -399,6 +412,7 @@ const Schedule = ({navigation}) => {
         schedDatas.push({data:doc.data(), id:doc.id});
     });
     setPetSchedDataset(schedDatas);
+   
   });
   }
 
@@ -406,7 +420,7 @@ const Schedule = ({navigation}) => {
   useEffect(()=> {
 
     const isSchedule = () => {
-    const res = petData.find(d => d?.data.Petname?.toLowerCase().trim() === petNameVal?.toLowerCase().trim());
+    const res = petData.find(d => d?.data.Petname?.toLowerCase().trim() === petNameVal?.toLowerCase().trim() || d?.data.Petname?.toLowerCase().trim() === petNames?.toLowerCase().trim());
     if(!res){
       setShow(false);
       return;
@@ -417,7 +431,7 @@ const Schedule = ({navigation}) => {
 
     isSchedule();
 
-  },[petNameVal])
+  },[petNameVal, petNames])
 
 
   handleSetDays = (day) => {
@@ -474,25 +488,28 @@ const Schedule = ({navigation}) => {
               color:'coral',
               fontSize:35,
             }}>|</Text> Scheduler</Text>
-            <View style={{
-              padding:2,
-              marginRight:5,
-              borderRadius:50,
-              width:35,
-              height:35,
-              justifyContent:'center',
-              alignItems:'center',
-              backgroundColor:'white',
-              elevation:3,
-            }}>
-            <TouchableOpacity onPress={handleOpenDrawer}>
-              {isDrawerOpen ? (
-                <AntDesign name="close" size={20} color="black" />
-                ): (
-                  <Entypo name="menu" size={24} color="black" />
-                  )}
-            </TouchableOpacity>
-            </View>
+            {!petNames && (
+ <View style={{
+  padding:2,
+  marginRight:5,
+  borderRadius:50,
+  width:35,
+  height:35,
+  justifyContent:'center',
+  alignItems:'center',
+  backgroundColor:'white',
+  elevation:3,
+}}>
+<TouchableOpacity onPress={handleOpenDrawer}>
+  {isDrawerOpen ? (
+    <AntDesign name="close" size={20} color="black" />
+    ): (
+      <Entypo name="menu" size={24} color="black" />
+      )}
+</TouchableOpacity>
+</View>
+            )}
+           
           </View>
           
       <Text style={{
@@ -501,42 +518,62 @@ const Schedule = ({navigation}) => {
         opacity:0.5,
         fontWeight:'bold',
       }}>Pet name</Text>
-      <Controller
-        name="company"
-        defaultValue=""
-        control={control}
-        render={({ field: { onChange, value } }) => (
-          <View style={{
-            marginBottom: 15,
-          }}>
-            <DropDownPicker
-              style={{
-                borderColor: "#FAB1A0",
-                height: 50,
-                width:'100%'
-              }}
-              open={openPetName}
-              value={petNameVal} //petNameVal
-              items={company}
-              setOpen={setPetOpen}
-              setValue={setPetnameValue}
-              setItems={setComapny}
-              placeholder="Select pet"
-              placeholderStyle={{
-                color: "grey",
-              }}
-              loading={loading}
-              activityIndicatorColor="#5188E3"
-              searchable={true}
-              searchPlaceholder="Search your pet here..."
-              
-              onChangeValue={onChange}
-              zIndex={1000}
-              zIndexInverse={3000}
-              />
-          </View>
-        )}
-        />
+      {!petNames ? (
+ 
+ <Controller
+ name="company"
+ defaultValue=""
+ control={control}
+ render={({ field: { onChange, value } }) => (
+   <View style={{
+     marginBottom: 15,
+   }}>
+     <DropDownPicker
+       style={{
+         borderColor: "#FAB1A0",
+         height: 50,
+         width:'100%'
+       }}
+       open={openPetName}
+       value={petNameVal} //petNameVal
+       items={company}
+       setOpen={setPetOpen}
+       setValue={setPetnameValue}
+       setItems={setComapny}
+       placeholder="Select pet"
+       placeholderStyle={{
+         color: "grey",
+       }}
+       loading={loading}
+       activityIndicatorColor="#5188E3"
+       searchable={true}
+       searchPlaceholder="Search your pet here..."
+       
+       onChangeValue={onChange}
+       zIndex={1000}
+       zIndexInverse={3000}
+       />
+   </View>
+ )}
+ />
+      ): (
+        <TextInput
+ 
+        mode='outlined'
+        activeOutlineColor='coral'
+        style={{
+          width:'100%',
+        }}
+        disabled
+        outlineColor='#FAB1A0'
+        selectionColor='#FAB1A0'
+        value={petNames}
+      
+        /> 
+  
+      )}
+
+     
 
       <Text style={{
         marginVertical:5,
@@ -843,6 +880,15 @@ const Schedule = ({navigation}) => {
             width:'40%',
             flexDirection:'row',
             gap:5
+          }} onPress={()=>{
+
+              navigation.navigate('Homepage',
+              {
+               screen: 'Dashboard',
+               params: {credentials: userData },
+             })
+         
+            setPetnames('');
           }}>
             <Ionicons name="arrow-back-outline" size={20} color="#FAB1A0" />
             <Text style={{
@@ -934,7 +980,7 @@ const Schedule = ({navigation}) => {
           </TouchableOpacity>
           </View>
          
-          <View>
+          <View >
           <FlatList
         data={petSchesData}
         renderItem={({ item, index })=> {
