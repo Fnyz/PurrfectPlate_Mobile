@@ -3,8 +3,8 @@ import React from 'react'
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-
-const NotificationList = ({name,image, message, weight, date, navigation}) => {
+import moment from 'moment';
+const NotificationList = ({dt, navigation, createdAt}) => {
     
   return (
     <>
@@ -17,25 +17,7 @@ const NotificationList = ({name,image, message, weight, date, navigation}) => {
         marginVertical:10,
     }}
     >
-      <View style={{
-     
-        borderRadius:50,
-        padding:2,
-        backgroundColor:'white'
-      }}>
-      <Image
-        style={{
-          width:75,
-          height:75,
-          opacity:0.9,
-          borderRadius:50,
-        
-        }}
-        source={{uri:image}}
-        contentFit="cover"
-        transition={1000}
-      />
-      </View>
+      
       <View>
         <Text style={{
             color:'white',
@@ -43,11 +25,7 @@ const NotificationList = ({name,image, message, weight, date, navigation}) => {
             fontSize:25,
             fontWeight:'bold',
             opacity:0.8
-        }}>{name}</Text>
-        <Text style={{
-            color:'white',
-            opacity:0.9
-        }}>Weight: {weight}.</Text>
+        }}>{dt.Messages.split(" ")[1]}</Text>
       </View>
     </View>
     <View style={{
@@ -70,15 +48,17 @@ const NotificationList = ({name,image, message, weight, date, navigation}) => {
         <Text style={{
             flexWrap:'wrap',
             fontSize:15,
+            color:'white'
         }}>
             <Text style={{
                 fontWeight:'bold',
-                color:'white'
-            }}>"{name}</Text> <Text
+                color:'white',
+               
+            }}>" </Text>{dt.Messages} <Text
             style={{
                 color:'white',
             }}
-            >{message}."</Text>
+            >. "</Text>
         </Text>
     </View>
     <View style={{
@@ -93,7 +73,7 @@ const NotificationList = ({name,image, message, weight, date, navigation}) => {
         fontSize:12,
         marginTop:15,
         opacity:0.7
-    }}>* {date}</Text>
+    }}>*{moment(dt.createdAt.toDate()).calendar()} </Text>
     <TouchableOpacity style={{
         flexDirection:'row',
         alignItems:'center',

@@ -67,6 +67,32 @@ const DashBoard = ({navigation,route: {params: { credentials }}}) => {
   const [gender, setGenders] = useState([
     { label: "", value: "" },
   ]);
+
+  
+  const [notif, setNotifications] = useState([]);
+
+  useEffect(()=> {
+    const getNotification = async  () => {
+      const user = await AsyncStorage.getItem("Credentials");
+      const datas = JSON.parse(user);
+      if(user){
+        const q = query(collection(db, "notifications"), where("deviceName", "==", datas.DeviceName.trim()), orderBy("createdAt", "desc"));
+        onSnapshot(q, (querySnapshot) => {
+       const data = [];
+       querySnapshot.forEach((docs) => {
+           data.push({dt:docs.data(), id: docs.id});
+       });
+       setNotifications(data);
+      
+     });
+       
+      }
+    } 
+
+    getNotification();
+     
+    }, [])
+  
   
   const [genderOpen, setGenderOpen] = useState(false);
   const[Gender, setGender] = useState('all');
@@ -74,6 +100,8 @@ const DashBoard = ({navigation,route: {params: { credentials }}}) => {
   const handleOpenDrawer = () => {
     navigation.openDrawer();
   }
+
+
 
 
 
@@ -581,7 +609,7 @@ const DashBoard = ({navigation,route: {params: { credentials }}}) => {
           }
           >
 
-         {petNotification.map((item, i)=> {
+         {notif.map((item, i)=> {
             return (
 <View style={{
                     width:360,
