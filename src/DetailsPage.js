@@ -3,7 +3,7 @@ import React, { useCallback, useEffect, useState } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Image } from 'expo-image';
 import { TextInput } from 'react-native-paper';
-import { Entypo , MaterialIcons } from '@expo/vector-icons';
+import { Entypo , MaterialIcons, FontAwesome5 } from '@expo/vector-icons';
 import { AntDesign } from '@expo/vector-icons';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { doc, updateDoc, getFirestore,  deleteDoc,  collection, query, where, onSnapshot} from "firebase/firestore";
@@ -15,6 +15,7 @@ import DropDownPicker from "react-native-dropdown-picker";
 import moment from 'moment';
 import PurrfectPlateLoadingScreen from './components/PurrfectPlateLoadingScreen';
 import PetListSched from './components/PetListSched';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 
 const db = getFirestore(app);
@@ -39,7 +40,39 @@ const DetailsPage = ({route, navigation}) => {
     { label: "Female", value: "female" },
     { label: "Prefer Not to Say", value: "neutral" },
   ]);
+  
+  const [loadingWth, setLoad2] = useState(false);
   const [petSchesData, setPetSchedDataset] = useState([]);
+
+
+  useEffect(()=> {
+    const makeChange = async () => {
+      const user = await AsyncStorage.getItem("Credentials")
+      if(user){
+          const datas = JSON.parse(user);
+          const q = query(collection(db, "List_of_Pets"), where("DeviceName", "==", datas.DeviceName));
+          onSnapshot(q, (snapshot) => {
+          snapshot.docChanges().forEach( async(change) => {
+           if (change.doc.data().Weight && change.doc.data().Petname === Petname && change.doc.data().Token === 0) {
+            setW(change.doc.data().Weight)
+            setLoad2(false)
+          
+            return;
+          }
+      
+  
+        });
+      
+      });
+  
+  
+      }
+    }
+
+    makeChange();
+   
+},[loadingWth])
+
   useEffect(()=>{
     setloads(true);
     setTimeout(() => {
@@ -166,7 +199,19 @@ const DetailsPage = ({route, navigation}) => {
   
 
 
- 
+    handleFakeWeight = async () => {
+      setLoad2(true);
+      setW("");
+      const petWeightss = doc(db, "List_of_Pets", id);
+        await updateDoc(petWeightss, {
+          requestWeight: true,
+          Weight:"", 
+          Token:0,
+        }).then(()=>{
+          setLoad2(true);
+        })
+  
+    }
 
 
   handleUpdate = async () => {
@@ -233,7 +278,7 @@ const DetailsPage = ({route, navigation}) => {
 
   const { control } = useForm();
 
-  if(loads){
+  if(false){
     return (
       <PurrfectPlateLoadingScreen message={"Please wait.."} fontSize={25} />
     )
@@ -309,14 +354,7 @@ const DetailsPage = ({route, navigation}) => {
       onChangeText={(val)=> setN(val) }
       
     />
-        <TextInput
-      label="Weight"
-      mode='outlined'
-      activeOutlineColor='coral'
-      value={`${w}`}
-      onChangeText={(val)=> setW(val) }
       
-    />
 <Controller
         name="gender"
         defaultValue=""
@@ -360,6 +398,63 @@ const DetailsPage = ({route, navigation}) => {
       value={`${a}`}
       onChangeText={(val)=> setA(val) }
     />
+    <View style={{
+      flexDirection:'row',
+      justifyContent:'center',
+      alignItems:'center',
+      gap:10,
+    }}>
+
+    <TextInput
+      label="Weight"
+      mode='outlined'
+      activeOutlineColor='coral'
+      style={{
+        width:'60%',
+      }}
+
+      
+      value={`${w}`}
+      onChangeText={(val) => setW(val)} 
+    />
+    <TouchableOpacity style={{
+      elevation:5,
+      backgroundColor:'#FAB1A0',
+      width:'40%',
+      height:50,
+      marginTop:5,
+      justifyContent:'center',
+      alignItems:'center',
+      borderRadius:5,
+      flexDirection:'row',
+      gap:10,
+    }} onPress={handleFakeWeight}>
+      {loadingWth ? 
+      <>
+        <ActivityIndicator animating={true} color='white' size={20} style={{
+              opacity:0.8,
+              position:'relative',
+              left:0,
+            }}/>
+            <Text style={{
+              color:'white',
+              fontWeight:'bold',
+            }}>Please wait..</Text>
+      </>
+     : (
+              <>
+             <FontAwesome5 name="weight" size={20} color="white" />
+              <Text style={{
+                color:'white',
+                fontWeight:'bold'
+              }}>Weight Pet</Text>
+              </>
+            
+            ) }
+  
+    </TouchableOpacity>
+    
+    </View>
      <TextInput
       label="Date Added"
       mode='outlined'

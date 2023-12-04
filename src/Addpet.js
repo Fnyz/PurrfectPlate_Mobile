@@ -10,7 +10,7 @@ import { Feather } from '@expo/vector-icons';
 import { FontAwesome } from '@expo/vector-icons';
 import { useDrawerStatus } from '@react-navigation/drawer';
 import * as ImagePicker from 'expo-image-picker';
-import { collection, addDoc, getFirestore, query, onSnapshot, serverTimestamp, setDoc, doc } from "firebase/firestore";
+import { collection, addDoc, getFirestore, query, onSnapshot, serverTimestamp, setDoc, doc , where, updateDoc } from "firebase/firestore";
 import app from './firebase';
 import Modal from "react-native-modal";
 import {Image} from 'expo-image'
@@ -21,8 +21,10 @@ import { petsData } from '../animeData';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import PurrfectPlateLoadingScreen from './components/PurrfectPlateLoadingScreen';
 import { Audio } from 'expo-av';
-
-
+import { Divider } from 'react-native-paper';
+import * as Permissions from 'expo-permissions';
+import * as FileSystem from 'expo-file-system';
+import AudioRecorded from './components/AudioRecorded';
 const Box = React.memo(({Cat, Dog, image, handleCloseModal, pickImage, handlePickImage, click, handleSave}) => {
   
   
@@ -157,21 +159,6 @@ const Box = React.memo(({Cat, Dog, image, handleCloseModal, pickImage, handlePic
 
 
 
-function generateFakePassword(length) {
-  const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  let password = '';
-  for (let i = 0; i < length; i++) {
-    const randomIndex = Math.floor(Math.random() * charset.length);
-    password += charset[randomIndex];
-  }
-  return password;
-}
-
-
-function generateFakeWeight(min, max) {
-  const fakeWeight = (Math.random() * (max - min) + min).toFixed(2); // Generates a random weight between min and max with 2 decimal places
-  return `${fakeWeight} kg`;
-}
 
 
 const db = getFirestore(app)
@@ -183,6 +170,7 @@ const AddPets= ({navigation}) => {
   const [dogData, setDogData] = useState([]);
   const[petName, setPetname] = useState('');
   const[Gender, setGender] = useState('');
+  const[Slot, setSLot] = useState('');
   const[click, setClick] = useState(false);
   const[Rfid, setRfid] = useState('');
   const[Weight, setWeight] = useState('');
@@ -192,6 +180,7 @@ const AddPets= ({navigation}) => {
   const [show, setShow] = useState(false);
   const [datas, setAllData] = useState([]);
   const [genderOpen, setGenderOpen] = useState(false);
+  const [slotOpen, setSlotOpen] = useState(false);
   const [typeOpen, setTypeOpen] = useState(false);
   const [gender, setGenders] = useState([
     { label: "Male", value: "male" },
@@ -211,13 +200,20 @@ const AddPets= ({navigation}) => {
     { label: "Cat", value: "cat" },
     { label: "Specified pet type", value: "specified" },
   ]
+
+  const slots = [
+    { label: "Slot_one", value: 1 },
+    { label: "Slot_two", value: 2 },
+
+  ]
   const [recording, setRecording] = React.useState();
   const [recordsound, setSound] = React.useState("");
   const [play, setPlay] = React.useState(false)
   const [needRec, setNeedRec] = React.useState(false)
   const [petRecord, setPetRecord] = React.useState("");
+  const [petId, setPetID] = React.useState('');
 
-
+  const [openModal, setOpenModal] = React.useState(false);
 
   const getUserData = async () => {
     const jsonValue = await AsyncStorage.getItem('Credentials');
@@ -238,7 +234,45 @@ const AddPets= ({navigation}) => {
 
 
 
-  
+
+  // const startRecording = async () => {
+  //   try {
+      
+
+  //     const recording = new Audio.Recording();
+  //     await recording.prepareToRecordAsync(Audio.RECORDING_OPTIONS_PRESET_HIGH_QUALITY);
+  //     await recording.startAsync();
+  //     setRecording(recording);
+  //     setIsRecording(true);
+  //   } catch (error) {
+  //     console.error('Failed to start recording', error);
+  //   }
+  // };
+
+  // const stopRecording = async () => {
+  //   try {
+  //     if (!recording) {
+  //       return;
+  //     }
+
+  //     await recording.stopAndUnloadAsync();
+  //     const uri = recording.getURI();
+  //     setRecording(undefined);
+  //     setIsRecording(false);
+
+  //     const fileInfo = await FileSystem.getInfoAsync(uri);
+  //     if (fileInfo.exists) {
+  //       const fileContent = await FileSystem.readAsStringAsync(uri, {
+  //         encoding: FileSystem.EncodingType.Base64,
+  //       });
+  //      console.log(fileContent)
+  //     } else {
+  //       console.error('File does not exist:', uri);
+  //     }
+  //   } catch (error) {
+  //     console.error('Failed to stop recording', error);
+  //   }
+  // };
 
   const getAllDatas = () => {
     const q = query(collection(db, "List_of_Pets"));
@@ -265,6 +299,41 @@ const AddPets= ({navigation}) => {
     setDogData(Dog);
     setCatData(Cat);
   },[])
+
+  
+    
+  useEffect(()=> {
+    const makeChange = async () => {
+      const user = await AsyncStorage.getItem("Credentials")
+      if(user){
+          const datas = JSON.parse(user);
+          const q = query(collection(db, "List_of_Pets"), where("DeviceName", "==", datas.DeviceName));
+          onSnapshot(q, (snapshot) => {
+          snapshot.docChanges().forEach((change) => {
+           if (change.doc.data().Weight && change.doc.data().Petname === petName && change.doc.data().Token === 0) {
+            setWeight(change.doc.data().Weight)
+            setLoad2(false)
+  
+            return;
+          }
+          if (change.doc.data().Rfid && change.doc.data().Petname === petName && change.doc.data().Token === 0) {
+            setRfid(change.doc.data().Rfid)
+            setLoad1(false)
+  
+            return;
+          }
+  
+        });
+      
+      });
+  
+  
+      }
+    }
+
+    makeChange();
+   
+},[loadingRf, loadingWth])
   
   
 
@@ -309,30 +378,105 @@ const AddPets= ({navigation}) => {
   
 
 
-  handleFakeRFID = () => {
+  handleFakeRFID = async () => {
     setLoad1(true);
 
-    setTimeout(() => {
-      setLoad1(false);
-      const fakePassword = generateFakePassword(20);
-      setRfid(fakePassword)
-    }, 3000);
+    const petRrfid = doc(db, "List_of_Pets", petId);
+      await updateDoc(petRrfid, {
+        requestRfid: true,
+      }).then( async()=>{
+        setLoad1(true);
+        await  addDoc(collection(db, "Task"), {
+          type:'request_rfid',
+          deviceName:deviceName.trim(),
+          document_id:petId,
+          request:null,
+        });
+      })
 
   }
 
-  handleFakeWeight = () => {
+  handleFakeWeight = async () => {
     setLoad2(true);
-    setTimeout(() => {
-      setLoad2(false);
-      const fakeWeight = generateFakeWeight(15, 25);
-      setWeight(fakeWeight)
-    }, 3000);
+    const petWeightss = doc(db, "List_of_Pets", petId);
+      await updateDoc(petWeightss, {
+        requestWeight: true,
+      }).then(async()=>{
+        setLoad2(true);
+        await  addDoc(collection(db, "Task"), {
+          type:'request_weight',
+          deviceName:deviceName.trim(),
+          document_id:petId,
+          request:null,
+        });
+  
+      })
 
   }
+
+  const handleUpdateChange = async () => {
+    setOpenModal(false)
+    setShow(true);
+    const petWeightss = doc(db, "List_of_Pets", petId);
+    await updateDoc(petWeightss, {
+      Token: 1,
+      requestWeight:false,
+      requestRfid:false,
+      GoalWeight:GoalWeight,
+    }).then( async()=>{
+      const a =  await addDoc(collection(db, "Petbackup_data"),  {
+        DeviceName:deviceName.trim(),
+        Petname: petName,
+        Gender,
+        Rfid,
+        Weight,
+        GoalWeight,
+        Age,
+        Slot,
+        petType:petType.toLowerCase().trim(),
+        image,
+        synced:false,
+        RecordingFile:petRecord,
+        requestWeight:false,
+        requestRfid:false,
+        Created_at:Date.now(),
+        Updated_at: Date.now(),
+      });
+     const b = await  addDoc(collection(db, "Task"), {
+        type:'refresh_pet',
+        deviceName:deviceName.trim(),
+        document_id:a.id,
+        request:null,
+      });
+
+     Promise.all([a, b]).then(() => {
+        setShow(false);
+        setPetname('');
+        setGender('');
+        setSetGoalWeight('');
+        setAge('');
+        setRfid('');
+        setWeight('');
+        setPetType('')
+        Dialog.show({
+          type: ALERT_TYPE.SUCCESS,
+          title: 'SUCCESS',
+          textBody: 'Add pet successfully.',
+          button: 'close',
+        })
+      });
+
+    })
+
+  }
+
+
+ 
+ 
 
   handleSubmit = async () => {
     setShow(true);
-    if(!petName || !Gender || !Rfid || !Weight || !GoalWeight || !Age || !petType){
+    if(!petName || !Gender || !Age || !petType){
       setShow(false)
       Dialog.show({
         type: ALERT_TYPE.DANGER,
@@ -344,7 +488,6 @@ const AddPets= ({navigation}) => {
     }
 
     if(!petRecord){
-      setShow(false)
       Dialog.show({
         type: ALERT_TYPE.DANGER,
         title: 'Warning!',
@@ -359,7 +502,7 @@ const AddPets= ({navigation}) => {
     
      if(!res){
       
-      const addListPet = await setDoc(doc(db, "List_of_Pets", deviceName), {
+      const addListPet = await addDoc(collection(db, "List_of_Pets"), {
         DeviceName:deviceName.trim(),
         Petname: petName,
         Gender,
@@ -370,51 +513,19 @@ const AddPets= ({navigation}) => {
         petType:petType.toLowerCase().trim(),
         image,
         synced:false,
-        audioBase64:petRecord,
-        Created_at: serverTimestamp(),
-        Updated_at: serverTimestamp(),
+        RecordingFile:petRecord,
+        requestWeight:false,
+        requestRfid:false,
+        Token:0,
+        Slot,
+        Created_at:Date.now(),
+        Updated_at: Date.now(),
       });
 
       if(addListPet.id){
-        const a =  addDoc(collection(db, "Petbackup_data"),  {
-          DeviceName:deviceName.trim(),
-          Petname: petName,
-          Gender,
-          Rfid,
-          Weight,
-          GoalWeight,
-          Age,
-          petType:petType.toLowerCase().trim(),
-          image,
-          synced:false,
-          audioBase64:petRecord,
-          Created_at: serverTimestamp(),
-          Updated_at: serverTimestamp(),
-        });
-       const b =  addDoc(collection(db, "Task"), {
-          type:'refresh_pet',
-          deviceName:deviceName.trim(),
-          document_id:addListPet.id,
-          request:null,
-        });
-
-       await Promise.all([a, b]).then(() => {
-          setShow(false);
-          setPetname('');
-          setGender('');
-          setSetGoalWeight('');
-          setAge('');
-          setRfid('');
-          setWeight('');
-          setPetType('')
-          Dialog.show({
-            type: ALERT_TYPE.SUCCESS,
-            title: 'SUCCESS',
-            textBody: 'Add pet successfully.',
-            button: 'close',
-          })
-        });
-      
+        setShow(false);
+        setOpenModal(true);
+         setPetID(addListPet.id);
       }
 
       return;
@@ -442,6 +553,10 @@ const AddPets= ({navigation}) => {
   },[petType])
 
   
+  
+  const onSlotOpen = useCallback(() => {
+
+  }, []);
 
  
   const onGenderOpen = useCallback(() => {
@@ -523,14 +638,30 @@ const AddPets= ({navigation}) => {
       xhr.send(null);
     });
   
-    const audioBase64 = await blobToBase64(blob);
+    const audioBase64 = await blobToBase64(audioURI);
     setPetRecord(audioBase64);
+
+    // try {
+    //   const audioURI = recording.getURI();
+  
+    //   // Read the MP3 file
+    //   const fileContent = await FileSystem.readAsStringAsync(audioURI, {
+    //     encoding: FileSystem.EncodingType.Base64,
+    //   });
+    //   setPetRecord(fileContent);
+    //   // Set the Base64 representation of the MP3 file to state
+    
+    // } catch (error) {
+    //   console.error('Error converting MP3 to Base64:', error);
+    // }
 
 
 
  
     
   }
+
+
 
 
 
@@ -564,7 +695,7 @@ const AddPets= ({navigation}) => {
 
 
 
-  if(false){
+  if(loads){
     return (
       <PurrfectPlateLoadingScreen message={"Please wait.."} fontSize={25} />
     )
@@ -622,6 +753,7 @@ const AddPets= ({navigation}) => {
   
 
     }}>
+     
 <Avatar.Image size={130} source={!image ? require('../assets/Image/dog.png') : {uri: image}}
        />
        <TouchableOpacity style={{
@@ -662,157 +794,7 @@ const AddPets= ({navigation}) => {
       onChangeText={(val)=> setPetname(val)}
     />
 
-     <Controller
-        name="gender"
-        defaultValue=""
-        control={control}
-        render={({ field: { onChange, value } }) => (
-          <View style={{ 
-            width: "100%",
-            marginTop:5,
-            }}>
-            <DropDownPicker
-              style={{borderColor: "#B7B7B7",
-              height: 50}}
-              open={genderOpen}
-              value={Gender} 
-              items={gender}
-              setOpen={setGenderOpen}
-              setValue={setGender}
-              placeholder="Select Gender"
-              placeholderStyle={{
-                color: "grey",
-              }}
-              onOpen={onGenderOpen}
-              onChangeValue={onChange}
-              zIndex={3000}
-              zIndexInverse={1000}
-            />
-          </View>
-        )}
-      />
-
-
-    <View style={{
-      flexDirection:'row',
-      justifyContent:'center',
-      alignItems:'center',
-      gap:10,
-    }}>
-
-    <TextInput
-      label="RFID"
-      mode='outlined'
-      activeOutlineColor='coral'
-      value={Rfid}
-      style={{
-        width:220,
-      }}
-      disabled
-    />
-    <TouchableOpacity style={{
-      elevation:5,
-      width:142,
-      height:50,
-      marginTop:5,
-      justifyContent:'center',
-      alignItems:'center',
-      borderRadius:5,
-      flexDirection:'row',
-      gap:10,
-      backgroundColor:'#FAB1A0'
-    }} onPress={handleFakeRFID}>
-
-     {loadingRf ? 
-      <>
-        <ActivityIndicator animating={true} color='white' size={20} style={{
-              opacity:0.8,
-              position:'relative',
-              left:0,
-            }}/>
-            <Text style={{
-              color:'white',
-              fontWeight:'bold',
-            }}>Please wait..</Text>
-      </>
-     : (
-              <>
-             <AntDesign name="scan1" size={20} color="white" />
-      <Text style={{
-        color:'white',
-        fontWeight:'bold'
-      }}>Set RFID</Text>
-              </>
-            
-            ) }
-
-
-     
-    </TouchableOpacity>
-
-    </View>
-
-    <View style={{
-      flexDirection:'row',
-      justifyContent:'center',
-      alignItems:'center',
-      gap:10,
-    }}>
-
-    <TextInput
-      label="Weight"
-      mode='outlined'
-      activeOutlineColor='coral'
-      style={{
-        width:220,
-        opacity:0.7
-      }}
-
-      
-      value={`${Weight}`}
-      onChangeText={(val) => setWeight(val)} 
-    />
-    <TouchableOpacity style={{
-      elevation:5,
-      backgroundColor:'#FAB1A0',
-      width:142,
-      height:50,
-      marginTop:5,
-      justifyContent:'center',
-      alignItems:'center',
-      borderRadius:5,
-      flexDirection:'row',
-      gap:10,
-    }} onPress={handleFakeWeight}>
-      {loadingWth ? 
-      <>
-        <ActivityIndicator animating={true} color='white' size={20} style={{
-              opacity:0.8,
-              position:'relative',
-              left:0,
-            }}/>
-            <Text style={{
-              color:'white',
-              fontWeight:'bold',
-            }}>Please wait..</Text>
-      </>
-     : (
-              <>
-             <FontAwesome5 name="weight" size={20} color="white" />
-              <Text style={{
-                color:'white',
-                fontWeight:'bold'
-              }}>Weight Pet</Text>
-              </>
-            
-            ) }
-  
-    </TouchableOpacity>
-
-    
-
-    </View>
-     {!changeType ? 
+{!changeType ? 
         <Controller
         name="petType"
         defaultValue=""
@@ -884,20 +866,43 @@ const AddPets= ({navigation}) => {
     </View>
     
     }
- 
 
-    <TextInput
-      label="Goal Weight"
-      mode='outlined'
-      activeOutlineColor='coral'
-      style={{
-        opacity:0.7
-      }}
-      value={GoalWeight}
-      onChangeText={(val) => setSetGoalWeight(val)} 
+<Controller
+        name="petSlot"
+        defaultValue=""
+        control={control}
+        render={({ field: { onChange, value } }) => (
+          <View style={{ 
+            width: "100%",
+            marginTop:5,
+            zIndex:20,
+            }}>
+            <DropDownPicker
+              style={{borderColor: "#B7B7B7",
+              height: 50}}
+              open={slotOpen}
+              value={Slot} 
+              items={slots}
+              setOpen={setSlotOpen}
+              setValue={setSLot}
+              placeholder="Select PetFeeding Slot"
+              placeholderStyle={{
+                color: "grey",
+              }}
+              onOpen={onSlotOpen}
+              onChangeValue={onChange}
+              zIndex={3000}
+              zIndexInverse={1000}
+            />
+          </View>
+        )}
+      />
 
-    />
-     <TextInput
+         
+    
+
+    
+          <TextInput
       label="Age"
       mode='outlined'
       activeOutlineColor='coral'
@@ -907,6 +912,41 @@ const AddPets= ({navigation}) => {
       }}
       onChangeText={(val) => setAge(val)} 
     />
+
+<Controller
+        name="gender"
+        defaultValue=""
+        control={control}
+        render={({ field: { onChange, value } }) => (
+          <View style={{ 
+            width: "100%",
+            marginTop:5,
+            zIndex:1,
+            }}>
+            <DropDownPicker
+              style={{borderColor: "#B7B7B7",
+              height: 50}}
+              open={genderOpen}
+              value={Gender} 
+              items={gender}
+              setOpen={setGenderOpen}
+              setValue={setGender}
+              placeholder="Select Gender"
+              placeholderStyle={{
+                color: "grey",
+              }}
+              onOpen={onGenderOpen}
+              onChangeValue={onChange}
+              zIndex={3000}
+              zIndexInverse={1000}
+            />
+          </View>
+        )}
+      />
+ 
+
+
+ 
     <View style={{
       flexDirection:'row',
       justifyContent: 'center',
@@ -1024,6 +1064,224 @@ const AddPets= ({navigation}) => {
         </View>
       </Modal>
 
+      <Modal isVisible={openModal} animationIn='slideInLeft'>
+        <View style={{ height:Rfid ? 320 : 300,
+        borderColor:'red',
+        marginHorizontal:2,
+        borderRadius:5,
+        flexDirection:'column',
+        justifyContent:'center',
+        backgroundColor:'white',
+        gap:5,
+        position:'relative',
+        paddingHorizontal:20,
+        }}>
+          
+          <Text style={{fontWeight:'bold', fontSize:20}}>Add pet Weight and RFID</Text>
+         <Text className='text-[12px] mb-3 opacity-40 font-bold'style={{
+          fontSize:12,
+          marginBottom:3,
+          opacity:0.5,
+          fontWeight:'bold'
+         }} >Click the button to provide the weight and rfid.</Text>
+       
+            <View style={{
+      flexDirection:'row',
+      justifyContent:'center',
+      alignItems:'center',
+      gap:10,
+    }}>
+
+    <TextInput
+      label="RFID"
+      mode='outlined'
+      activeOutlineColor='coral'
+      value={Rfid}
+      style={{
+        width:170,
+      }}
+    />
+    <TouchableOpacity style={{
+      elevation:5,
+      width:120,
+      height:50,
+      marginTop:5,
+      justifyContent:'center',
+      alignItems:'center',
+      borderRadius:5,
+      flexDirection:'row',
+      gap:10,
+      backgroundColor:'#FAB1A0'
+    }} onPress={handleFakeRFID}>
+
+     {loadingRf ? 
+      <>
+        <ActivityIndicator animating={true} color='white' size={20} style={{
+              opacity:0.8,
+              position:'relative',
+              left:0,
+            }}/>
+            <Text style={{
+              color:'white',
+              fontWeight:'bold',
+            }}>Please wait..</Text>
+      </>
+     : (
+              <>
+             <AntDesign name="scan1" size={20} color="white" />
+      <Text style={{
+        color:'white',
+        fontWeight:'bold'
+      }}>Set RFID</Text>
+              </>
+            
+            ) }
+
+
+     
+    </TouchableOpacity>
+
+    </View>
+    {Rfid && (
+    <View style={{
+      flexDirection:'row',
+      justifyContent:'center',
+      alignItems:'center',
+      gap:10,
+    }}>
+
+    <TextInput
+      label="Weight"
+      mode='outlined'
+      activeOutlineColor='coral'
+      style={{
+        width:170,
+      }}
+
+      
+      value={`${Weight}`}
+      onChangeText={(val) => setWeight(val)} 
+    />
+    <TouchableOpacity style={{
+      elevation:5,
+      backgroundColor:'#FAB1A0',
+      width:120,
+      height:50,
+      marginTop:5,
+      justifyContent:'center',
+      alignItems:'center',
+      borderRadius:5,
+      flexDirection:'row',
+      gap:10,
+    }} onPress={handleFakeWeight}>
+      {loadingWth ? 
+      <>
+        <ActivityIndicator animating={true} color='white' size={20} style={{
+              opacity:0.8,
+              position:'relative',
+              left:0,
+            }}/>
+            <Text style={{
+              color:'white',
+              fontWeight:'bold',
+            }}>Please wait..</Text>
+      </>
+     : (
+              <>
+             <FontAwesome5 name="weight" size={20} color="white" />
+              <Text style={{
+                color:'white',
+                fontWeight:'bold'
+              }}>Weight Pet</Text>
+              </>
+            
+            ) }
+  
+    </TouchableOpacity>
+    
+    </View>
+
+    )}
+    <TextInput
+      label="Goal Weight"
+      mode='outlined'
+      activeOutlineColor='coral'
+      style={{
+        opacity:0.7,
+        marginHorizontal:3,
+      }}
+      value={GoalWeight}
+      onChangeText={(val) => setSetGoalWeight(val)} 
+
+    />
+     
+    <View style={{
+      flexDirection:'row',
+      justifyContent:'center',
+      alignItems:'center',
+      gap:10,
+      marginVertical:10,
+      marginHorizontal:10,
+    }}>
+    <TouchableOpacity style={{
+   
+   width:'50%',
+   padding:10,
+   backgroundColor:'#FAB1A0',
+   borderRadius:3,
+   flexDirection:'row',
+   justifyContent:'center',
+   alignItems:'center',
+ 
+
+
+ }} onPress={handleUpdateChange} >
+      <Text style={{
+        color:'white',
+        fontWeight:'bold',
+        
+      }}>SUBMIT</Text>
+    </TouchableOpacity>
+    <TouchableOpacity style={{
+    flexDirection:'row',
+    justifyContent:'center',
+    alignItems:'center',
+   width:'50%',
+   padding:10,
+   borderColor:'#FAB1A0',
+   borderRadius:3,
+   borderWidth:1,
+
+ }} onPress={()=>{
+        if(!Rfid){
+          Dialog.show({
+            type: ALERT_TYPE.DANGER,
+            title: 'WARNING',
+            textBody: 'Please provide RFID!',
+            button: 'close',
+          })
+          return;
+        }
+        setOpenModal(false);
+        setPetname('');
+        setGender('');
+        setSetGoalWeight('');
+        setAge('');
+        setRfid('');
+        setWeight('');
+        setPetType('')
+ }}>
+      <Text style={{
+        color:'#FAB1A0',
+        fontWeight:'bold'
+      }}>CLOSE</Text>
+    </TouchableOpacity>
+    </View>
+  
+        </View>
+      </Modal>
+
+
 
       
       <Modal isVisible={visible} animationIn='slideInLeft' animationOut='fadeOut'>
@@ -1061,6 +1319,7 @@ const AddPets= ({navigation}) => {
         }}>Add Recording</Text>
         <TouchableOpacity onPress={()=>{
 setNeedRec(false);
+
 }}>
         <AntDesign name="close" size={20} color="red" />
         </TouchableOpacity>
@@ -1138,6 +1397,7 @@ setNeedRec(false);
         <View>
     
     </View>
+  
 
        </View>
        </Modal>

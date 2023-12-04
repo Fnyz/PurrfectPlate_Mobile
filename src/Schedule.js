@@ -51,6 +51,8 @@ const Schedule = ({navigation, route}) => {
   const [loads, setloads] = useState(false)
   const [petNames, setPetnames] = useState('');
   const [userData,setUserData] = useState({});
+  const [slots, setSlots] = useState([]);
+  const [listPets, setListPet] = useState([]);
 
 
 
@@ -89,12 +91,67 @@ const Schedule = ({navigation, route}) => {
 });
   }
 
+  const getAllListOFpet = async () => {
+    const jsonValue = await AsyncStorage.getItem('Credentials');
+    const credential = JSON.parse(jsonValue);
+    const q = query(collection(db, "List_of_Pets"));
+   onSnapshot(q, (querySnapshot) => {
+  const forpets = [];
+  querySnapshot.forEach((doc) => {
+    forpets.push({data:doc.data(), id:doc.id});
+  });
+  
+  setListPet(forpets)
+});
+  }
+
 
   useEffect(()=>{
-    setPetnames(route.params.petnames);
+    
+    const getTimeSlot = async () => {
+      const jsonValue = await AsyncStorage.getItem('Credentials');
+      const credential = JSON.parse(jsonValue);
+    
+      const q = query(collection(db, "feeding_schedule"), where('DeviceName', "==", credential.DeviceName.trim()));
+     onSnapshot(q, (querySnapshot) => {
+    const forPetName = [];
+    querySnapshot.forEach((docs) => {
+      forPetName.push({data:docs.data(), id: docs.id});
+  
+    });
+
+     setSlots(forPetName);
+
+
+    // const filteredArray = forPetName.filter((a) => {
+    //   return a.data.petSlot === "slot_one";
+    // });
+    
+    // // Log the 'ScheduleTime' values for elements that meet the condition
+    // const combinedScheduleTime = filteredArray.reduce((result, item) => {
+    //   return result.concat(item.data.ScheduleTime);
+    // }, []);
+
+    // console.log(combinedScheduleTime);
+  
+
+    
+    
+    
+  });
+  
+    }
+
+    getTimeSlot();
+    
+  },[])
+
+
+  useEffect(()=>{
+    setPetnames(route.params?.petnames || null);
     getAllDatas();
     getAllNameOfPets();
-
+    getAllListOFpet();
    
  
   },[])
@@ -177,8 +234,46 @@ const Schedule = ({navigation, route}) => {
     const a = petSchesData.find((d) => d.data.Days === days && d.data.DeviceName === deviceName)
     const b = a?.data.ScheduleTime.find((d) => d.time === currenTime.split(" ")[0].trim());
     const c = a?.data.ScheduleTime.find((d) => d.time === time.split(" ")[0].trim());
+    const res  = petData.find(d => d.data.Days === days.trim() && d.data.DeviceName === deviceName);
 
-    if(c){
+
+
+
+
+    const combinedData = [];
+
+    const filteredArray = slots?.filter((a) => {
+      return a.data.Slot === res?.data.Slot &&  a.data.Days === res.data.Days;
+    });
+    filteredArray?.forEach((item) => {
+ const petname = item.data?.Petname;
+ const scheduleTimes = item.data.ScheduleTime.map((time) => {
+   return { petname, sched:time };
+ });
+ combinedData.push(...scheduleTimes);
+   });
+
+   
+    const timeToMinutes = (timeStr) => {
+      const [hours, minutes] = timeStr.split(':').map(Number);
+      return hours * 60 + minutes;
+    };
+   const rs = combinedData.find(z => timeToMinutes(z.sched.time) === timeToMinutes(time.split(" ")[0].trim()) );
+ 
+   if(rs){
+    setUpdatingProccess(false);
+    Dialog.show({
+              type: ALERT_TYPE.DANGER,
+              title: 'Warning!',
+              textBody:rs?.petname === petNameVal ? `You already set this time on ${res?.data.Slot==1 ? "SLOT ONE": "SLOT TWO"}` : `${timeOnly} is already set to ${rs?.petname} in ${res?.data.petSlot=="slot_one"? "SLOT_ONE.": "SLOT_TWO."} on the pet schedule, please choose other time.`,
+              button: 'close',
+    })
+
+   
+    return;
+  }else{
+
+       if(c){
       setUpdatingProccess(false)
       Dialog.show({
         type: ALERT_TYPE.DANGER,
@@ -190,6 +285,7 @@ const Schedule = ({navigation, route}) => {
     }
 
     
+
 
     if(b){
      const res = a?.data.ScheduleTime.filter(d => d.time !== currenTime.split(" ")[0].trim());
@@ -220,6 +316,13 @@ const Schedule = ({navigation, route}) => {
     }
   
   
+
+  }
+
+
+
+
+ 
   
     
      
@@ -228,14 +331,19 @@ const Schedule = ({navigation, route}) => {
 
 
   handleSetPetSched = async () => {
-   
+    
+    const h = listPets.find((a)=>a.data.DeviceName.toLowerCase().trim() === deviceName.toLowerCase().trim() && a.data.Petname.trim().toLowerCase() === petNameVal.trim().toLowerCase())
+
     const petSchedule = {
       Petname: petNameVal,
       Days: day,
       DeviceName: deviceName.trim(),
       ScheduleTime: foodItems,
       synced:false,
+      petId:h?.id, 
+      Slot:h.data.Slot,
     }
+
 
     setVisible(true);
 
@@ -310,8 +418,16 @@ const Schedule = ({navigation, route}) => {
       const minutes = selectedTime.getMinutes();
       const ampm = hours >= 12 ? 'PM' : 'AM';
   
+
+       // Ensure hours are always displayed with two digits using padStart
+  const formattedHours = String(hours).padStart(2, '0');
+  const formattedMinutes = String(minutes).padStart(2, '0');
       // Create the formatted time string
-      const formattedTimeString = `${hours}:${minutes.toString().padStart(2, '0')} ${ampm}`;
+      // const formattedTimeString = `${hours}:${minutes.toString().padStart(2, '0')} ${ampm}`;
+      // setFormattedTime(formattedTimeString);
+      // setTimeOnly(formattedTimeString.split(" ")[0]);
+
+      const formattedTimeString = `${formattedHours}:${formattedMinutes} ${ampm}`;
       setFormattedTime(formattedTimeString);
       setTimeOnly(formattedTimeString.split(" ")[0]);
 
@@ -340,13 +456,53 @@ const Schedule = ({navigation, route}) => {
       const [hours, minutes] = timeStr.split(':').map(Number);
       return hours * 60 + minutes;
     };
+
+   
    
   
   
 
    //trace if that schedule is already exists
     const res  = petData.find(d => d.data.Days === day.trim() && d.data.DeviceName === deviceName);
-      const exist = res?.data.ScheduleTime.find(a => timeToMinutes(a.time) === timeToMinutes(timeOnly) && a.parameters.toLowerCase().trim() ===  formattedTime.split(" ")[1].toLowerCase().trim() );
+
+    const combinedData = [];
+
+    const filteredArray = slots?.filter((a) => {
+      return a.data.Slot === res?.data.Slot &&  a.data.Days === res?.data.Days;
+    });
+    filteredArray?.forEach((item) => {
+ const petname = item.data?.Petname;
+ const scheduleTimes = item.data.ScheduleTime.map((time) => {
+   return { petname, sched:time };
+ });
+ combinedData.push(...scheduleTimes);
+});
+
+
+
+    // const filteredArray = slots.filter((a) => {
+    //   return a.data.petSlot === res.data.petSlot &&  a.data.Days === res.data.Days;
+    // });
+    
+    // // Log the 'ScheduleTime' values for elements that meet the condition
+    // const combinedScheduleTime = filteredArray.reduce((result, item) => {
+    //   return result.concat(item.data.ScheduleTime);
+    // }, []);
+
+    const rs = combinedData.find(a => timeToMinutes(a.sched.time) === timeToMinutes(timeOnly) );
+    if(rs){
+      Dialog.show({
+                type: ALERT_TYPE.DANGER,
+                title: 'Warning!',
+                textBody:rs?.petname === petNameVal ? `You already set this time on ${res?.data.Slot==1 ? "SLOT ONE": "SLOT TWO"}` : `${timeOnly} is already set to ${rs?.petname} in ${res?.data.petSlot=="slot_one"? "SLOT_ONE": "SLOT_TWO"} on the pet schedule, please choose other time.`,
+                button: 'close',
+      })
+
+      setCaps('');  
+    setFormattedTime('');
+      
+    }else{
+        const exist = res?.data.ScheduleTime.find(a => timeToMinutes(a.time) === timeToMinutes(timeOnly) && a.parameters.toLowerCase().trim() ===  formattedTime.split(" ")[1].toLowerCase().trim() );
   
     if(exist){
     
@@ -376,6 +532,11 @@ const Schedule = ({navigation, route}) => {
     setFoodItems([...foodItems, { time: formattedTime.split(' ')[0], cups: caps, parameters: formattedTime.split(' ')[1].trim() }]);
     setCaps('');  
     setFormattedTime('');
+    }
+
+
+
+    
   };
 
 

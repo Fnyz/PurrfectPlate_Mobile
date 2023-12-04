@@ -222,9 +222,20 @@ var hashPass = CryptoJS.SHA256(password, '').toString();
 
    const handleNewDevice = async () => {
     setClick(true);
-    const res = deviceList.find(d => d.data.Email === '' && d.data.Token === 0);
+    const res = deviceList.find(d => d.data.Token === 0);
+
+    if(!res){
+      Dialog.show({
+        type: ALERT_TYPE.DANGER,
+        title: 'Oppps.',
+        textBody: 'No device available, contact the administrator!.',
+        button: 'close',
+      })
+     setClick(false)
+     return;
+    }
    
-const devicess = doc(db, "Device_Authorization", res.id);
+const devicess = doc(db, "Device_Authorization", res?.id);
 
 await updateDoc(devicess, {
 Email: email.trim(),

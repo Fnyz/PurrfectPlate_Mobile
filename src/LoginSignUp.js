@@ -332,26 +332,26 @@ const LoginSignUp = ({route, navigation}) => {
 
     switch(error.code) {
       case "auth/missing-password":
-        errorMessage = "Password is missing, please try again!";
-      break;
-      case "auth/invalid-email":
-        errorMessage = "Email is in valid format, please try again!";
-      break;
-      case "auth/weak-password":
-        errorMessage = "Password must be at least 6 characters long.";
-      break;
-      case "auth/wrong-password":
-        errorMessage = "Password is incorrect!";
-      break;
-      case 'auth/user-not-found':
-        errorMessage = "Email is not registered!";
-      break;
-      case 'auth/invalid-login-credentials':
-        errorMessage = "Account is not registered yet.";
-      break;
-      case 'auth/too-many-requests':
-        errorMessage = "Access to this account is temporarily disabled due to many failed login attemps. You can immediately restore it by resetting your password or you can try again later.";
-      break;
+              errorMessage = "Password is missing, please try again!";
+            break;
+            case "auth/invalid-email":
+              errorMessage = "Email is in valid format, please try again!";
+            break;
+            case "auth/weak-password":
+              errorMessage = "Password must be at least 6 characters long.";
+            break;
+            case "auth/wrong-password":
+              errorMessage = "Password is incorrect!";
+            break;
+            case 'auth/user-not-found':
+              errorMessage = "Email is not registered!";
+            break;
+            case 'auth/invalid-login-credentials':
+              errorMessage = "Invalid login credentials";
+            break;
+            case 'auth/too-many-requests':
+              errorMessage = "Access to this account is temporarily disabled due to many failed login attemps. You can immediately restore it by resetting your password or you can try again later.";
+            break;
       default:
        
     }
