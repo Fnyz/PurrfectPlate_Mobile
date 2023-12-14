@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { TextInput } from 'react-native-paper';
 import { getAuth, signOut } from "firebase/auth";
 import app from './firebase';
-import {collection, getFirestore, query, onSnapshot, updateDoc, doc, where} from 'firebase/firestore';
+import {collection, getFirestore, query, onSnapshot, updateDoc, doc, where, getDocs} from 'firebase/firestore';
 import { ALERT_TYPE, Dialog, AlertNotificationRoot } from 'react-native-alert-notification';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import CryptoJS from 'crypto-js';

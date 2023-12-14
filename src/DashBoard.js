@@ -70,28 +70,107 @@ const DashBoard = ({navigation,route: {params: { credentials }}}) => {
 
   
   const [notif, setNotifications] = useState([]);
-
-  useEffect(()=> {
-    const getNotification = async  () => {
-      const user = await AsyncStorage.getItem("Credentials");
+  
+  useEffect(() => {
+    
+     AsyncStorage.getItem("Credentials").then((user)=>{
       const datas = JSON.parse(user);
-      if(user){
-        const q = query(collection(db, "notifications"), where("deviceName", "==", datas.DeviceName.trim()), orderBy("createdAt", "desc"));
-        onSnapshot(q, (querySnapshot) => {
-       const data = [];
-       querySnapshot.forEach((docs) => {
-           data.push({dt:docs.data(), id: docs.id});
-       });
-       setNotifications(data);
-      
-     });
-       
-      }
-    } 
+    
+      if (datas) {
+        const q = query(
+          collection(db, "notifications"),
+          where("deviceName", "==", datas.DeviceName.trim()),
+          where("type", "==", "User"),
+          orderBy("createdAt", "desc")
+        );
+        const fetchData =async () => {
+          const notificationsData = [];
+        
+          const unsubscribe = onSnapshot(q, (querySnapshot) => {
+            querySnapshot.forEach((doc) => {
+              const type = doc.data().type;
+              const petName = doc.data().pet_name;
+              const createdAt = doc.data().createdAt.toDate(); 
+            
+              if (type === "Admin") {
+             
+        
+                const usersQuery = query(
+                  collection(db, "users"),
+                  where("username", "==", type)
+                );
+        
+                const userUnsubscribe = onSnapshot(usersQuery, (usersQuerySnapshot) => {
+                  usersQuerySnapshot.forEach(async(userDoc) => {
+                    notificationsData.push({
+                      name: userDoc.data().username,
+                      weight: null,
+                      message: doc.data().Messages,
+                      image: userDoc.data().image,
+                      createdAt
+                    });
+                    notificationsData.sort((a, b) => b.createdAt - a.createdAt);
+                    setNotifications([...notificationsData]); // Update state with new data
+        
+                    // Save data in localStorage
+                   await AsyncStorage.setItem("notifications", JSON.stringify(notificationsData));
+                  });
+                });
+              }
+        
+             if(type === "User"){
+              const listOfPetsQuery = query(
+                collection(db, "List_of_Pets"),
+                where("DeviceName", "==", datas.DeviceName.trim()),
+                where("Petname", "==", petName)
+              );
+        
+              const petUnsubscribe = onSnapshot(listOfPetsQuery, (petsQuerySnapshot) => {
+                petsQuerySnapshot.forEach(async(petDoc) => {
+                  notificationsData.push({
+                    name: petDoc.data().Petname,
+                    weight: petDoc.data().Weight,
+                    message: doc.data().Messages, 
+                    image: petDoc.data().image,
+                    createdAt
+                  });
+                  notificationsData.sort((a, b) => b.createdAt - a.createdAt);
+                  setNotifications([...notificationsData]); // Update state with new data
 
-    getNotification();
+                  
+                  // Save data in localStorage
+                await AsyncStorage.setItem("notifications", JSON.stringify(notificationsData));
+                });
+              });
+             }
+            
+            });
+          });
+        
+          return unsubscribe;
+        };
+
+        fetchData();
+        
+      }
+   
+     });
      
-    }, [])
+    
+      
+    }, []);
+
+    useEffect(() => {
+      AsyncStorage.getItem("notifications").then((storedNotifications)=>{
+        if (storedNotifications) {
+          const parsedNotifications = JSON.parse(storedNotifications);
+          setNotifications(parsedNotifications);
+        }
+
+  
+      });
+    }, []);
+    
   
   
   const [genderOpen, setGenderOpen] = useState(false);

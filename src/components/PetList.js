@@ -54,7 +54,7 @@ const PetList = ({navigation, dt, id}) => {
         }}>
             Weight: <Text style={{
                 fontWeight:'bold',
-            }}>{Weight.toFixed(2)}</Text>
+            }}>{parseFloat(Weight).toFixed(2)}</Text>
         </Text>
         <Text
          style={{
