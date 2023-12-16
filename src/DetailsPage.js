@@ -1,11 +1,11 @@
-import { View, Text, ImageBackground, TouchableOpacity, ActivityIndicator, FlatList } from 'react-native'
+import { View, Text, ImageBackground, TouchableOpacity, ActivityIndicator, FlatList, ScrollView } from 'react-native'
 import React, { useCallback, useEffect, useState } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Image } from 'expo-image';
 import { TextInput } from 'react-native-paper';
-import { Entypo , MaterialIcons, FontAwesome5 } from '@expo/vector-icons';
+import { Entypo , MaterialIcons, FontAwesome5, EvilIcons, FontAwesome } from '@expo/vector-icons';
 import { AntDesign } from '@expo/vector-icons';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { MaterialCommunityIcons, Fontisto } from '@expo/vector-icons';
 import { doc, updateDoc, getFirestore,  deleteDoc,  collection, query, where, onSnapshot} from "firebase/firestore";
 import app from './firebase';
 import Modal from "react-native-modal";
@@ -16,14 +16,152 @@ import moment from 'moment';
 import PurrfectPlateLoadingScreen from './components/PurrfectPlateLoadingScreen';
 import PetListSched from './components/PetListSched';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
+import * as ImagePicker from 'expo-image-picker';
+import { petsData } from '../animeData';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 const db = getFirestore(app);
 
+const Box = React.memo(({Cat, Dog, image, handleCloseModal, pickImage, handlePickImage, click, handleSave}) => {
+  
+  
+  return (
+    <View style={{
+      backgroundColor:'rgba(0,0,0,0.8)',
+      height:400,
+      padding:15,
+    }}>
+      <View style={{
+        flexDirection:'row',
+        justifyContent:'space-between',
+        alignItems:'center'
+      }}>
+      <Text style={{
+        color:'white',
+        fontWeight:'bold',
+        marginTop:5,
+      }}><Text style={{
+        color:'coral',
+        fontWeight:'bold',
+        fontSize:20,
+      }}>|</Text> Choose your favorite image</Text>
+      {click && (
+        <TouchableOpacity onPress={handleSave}>
+        <Text style={{
+          color:'coral',
+          fontWeight:'bold',
+          marginRight:10,
+          paddingTop:10,
+        }}>SAVE</Text>
+        </TouchableOpacity>
+      )}
+  
+      </View>
+    
+      <View style={{
+        marginTop:15,
+      }}>
+        <Text style={{
+          color:'white',
+          opacity:0.8,
+          marginBottom:10,
+        }}>Dog</Text>
+        <ScrollView horizontal={true}>
+          {Dog.map((item, i)=> {
+            return (
+             <TouchableOpacity key={item.id} style={{
+              marginRight:10,
+             }} onPress={()=> handlePickImage(item.image)}>
+          <View style={{
+            borderWidth:image === item.image ? 1 : null,
+            borderColor:image === item.image ? 'coral': null,
+            padding:2,
+            borderRadius:50,
+          }}>
+          <Image
+        style={{ width: 70, height: 70, resizeMode:'cover', borderRadius:50}}
+        source= {{uri:item.image}}
+        contentFit="cover"
+        transition={1000}
+      />
+          </View>
+         
+             </TouchableOpacity>
+             
+            )
+          })}
+        </ScrollView>
+
+        <Text style={{
+          color:'white',
+          opacity:0.8,
+          marginBottom:10,
+          marginTop:15,
+        }}>Cat</Text>
+        <ScrollView horizontal={true}>
+          {Cat.map((item, i)=> {
+            return (
+             
+             <TouchableOpacity key={item.id} style={{
+              marginRight:10,
+             }} onPress={()=> handlePickImage(item.image)} >
+               <View style={{
+                borderWidth:image === item.image ? 1 : null,
+                borderColor:image === item.image ? 'coral': null,
+                padding:2,
+                borderRadius:50,
+              }}>
+          <Image
+        style={{ width: 70, height: 70, resizeMode:'cover', borderRadius:50}}
+        source= {{uri:item.image}}
+        contentFit="cover"
+        transition={1000}
+      />
+        </View>
+             </TouchableOpacity>
+           
+            )
+          })}
+        </ScrollView>
+
+  
+        <TouchableOpacity style={{
+         borderWidth:1,
+         marginTop:20,
+         borderColor:'coral',
+         paddingVertical:15,
+         justifyContent:'center',
+         alignItems:'center',
+         borderRadius:5,
+        }} onPress={pickImage}>
+          <Text style={{
+            color:'coral',
+          }}>Choose image from gallery</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={()=> handleCloseModal()}>
+          <Text style={{
+            color:'white',
+            textAlign:'center',
+            marginTop:15,
+            opacity:0.6,
+            fontWeight:'bold'
+          }}>Skip from now</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  )
+})
+
 
 const DetailsPage = ({route, navigation}) => {
-  const {image, Weight, Gender, Age, Petname, date, DeviceName, id, GoalWeight} = route.params;
+  const {image, Weight, Gender, Age, Petname, date, DeviceName, id, GoalWeight, StartGoalMonth, EndGoalMonth, Slot} = route.params;
   const [visible2, setVisible2] = useState(false)
+ 
+  const [catData, setCatData] = useState([]);
+  const [dogData, setDogData] = useState([]);
+  const [date1, setDate1] = useState(false);
+  const [date2, setDate2] = useState(false)
+  const[click, setClick] = useState(false);
   const [loads, setloads] = useState(false)
   const [w, setW] = useState(null);
   const [a, setA] = useState(null);
@@ -31,15 +169,27 @@ const DetailsPage = ({route, navigation}) => {
   const [img, setImg] = useState(null);
   const [gW, setGw] = useState(null)
   const [visible, setVisible] = useState(false);
+  const [visible3, setVisible3] = useState(false);
   const [isChange, setChange] = useState(false);
   const[genders, setGender] = useState('');
   const[show, setShow] = useState(false);
+  const [time1, setTime1] = useState(new Date());
+  const [time, setTime] = useState(new Date());
+  const [val, setVal] = useState("");
+  const [val1, setVal1] = useState("");
   const [genderOpen, setGenderOpen] = useState(false);
   const [gender, setGenders] = useState([
     { label: "Male", value: "male" },
     { label: "Female", value: "female" },
     { label: "Prefer Not to Say", value: "neutral" },
   ]);
+  const [slotOpen, setSlotOpen] = useState(false);
+  const [slot, setSlot] = useState([
+    { label: "Slot_one", value: 1 },
+    { label: "Slot_two", value: 2 },
+  ]);
+
+  const[slotnumber, setSlotNumber] = useState('');
   
   const [loadingWth, setLoad2] = useState(false);
   const [petSchesData, setPetSchedDataset] = useState([]);
@@ -84,9 +234,15 @@ const DetailsPage = ({route, navigation}) => {
    setN(Petname);
    setImg(image)
    setGw(GoalWeight);
+   setSlotNumber(Slot)
+   setVal(StartGoalMonth === "Invalid Date" ? null: StartGoalMonth);
+   setVal1(EndGoalMonth  === "Invalid Date" ? null: EndGoalMonth);
   },[])
   const [updatingProccess, setUpdatingProccess] = useState(false);
   const onGenderOpen = useCallback(() => {
+
+  }, []);
+  const onSlotOpen = useCallback(() => {
 
   }, []);
 
@@ -125,6 +281,29 @@ const DetailsPage = ({route, navigation}) => {
   const handleRemoveSched = async (id) => {
     await deleteDoc(doc(db, "feeding_schedule",id));
   }
+
+  const startdate1 = (event, selectedStart) => {
+    setDate1(false);
+    if (selectedStart !== undefined) {
+      const formattedDate1 = moment(selectedStart).format('MM/D/YYYY');
+      setVal(formattedDate1);
+      setTime1(selectedStart);
+    
+    }
+
+  }
+
+  const startdate2 = (event, selectedEnd) => {
+setDate2(false);
+
+
+if (selectedEnd !== undefined) {
+  const formattedDate2 = moment(selectedEnd).format('MM/D/YYYY');
+  setVal1(formattedDate2);
+  setTime(selectedEnd);
+
+}
+      }
 
 
    
@@ -192,7 +371,6 @@ const DetailsPage = ({route, navigation}) => {
           schedDatas.push({data:doc.data(), id:doc.id});
       });
       setPetSchedDataset(schedDatas);
-      console.log(schedDatas);
     
     });
     }
@@ -207,11 +385,53 @@ const DetailsPage = ({route, navigation}) => {
           requestWeight: true,
           Weight:"", 
           Token:0,
-        }).then(()=>{
+        }).then(async()=>{
           setLoad2(true);
+          await  addDoc(collection(db, "Task"), {
+          type:'request_weight',
+          deviceName:DeviceName.trim(),
+          document_id:id,
+          request:null,
+        });
         })
   
     }
+
+    handleShowModal=()=>{
+      setVisible3(true);
+    }
+  
+    handleCloseModal=()=>{
+      setVisible3(false);
+    }
+  
+    handlePickImage = (url) => {
+     setImg(url);
+     setClick(true);
+    }
+  
+    handleSave = () => {
+      setClick(false);
+      setVisible3(false);
+    }
+    
+
+    pickImage = async () => {
+      let result = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.All,
+          allowsEditing: true,
+          aspect: [4, 3],
+          quality: 1,
+        });
+    
+        if(result.canceled){
+          return null;
+        }
+        if (!result.canceled) {
+         setImg(result.assets[0].uri)
+        }
+  };
+  
 
 
   handleUpdate = async () => {
@@ -223,6 +443,9 @@ const DetailsPage = ({route, navigation}) => {
       Gender:genders,
       GoalWeight:gW,
       Age:a,
+      image:img, 
+      StartGoalMonth:val === null ? "Invalid Date":val,
+      EndGoalMonth:val1 === null ? "Invalid Date": val1,
     }
     try {
       const collects = doc(db, "List_of_Pets", id);
@@ -274,11 +497,19 @@ const DetailsPage = ({route, navigation}) => {
   
   }
 
+  useEffect(()=>{
+    const Dog = petsData.filter(item => item.category === 'Dog');
+    const Cat = petsData.filter(item => item.category === 'Cat');
+
+    setDogData(Dog);
+    setCatData(Cat);
+  },[])
+
 
 
   const { control } = useForm();
 
-  if(false){
+  if(loads){
     return (
       <PurrfectPlateLoadingScreen message={"Please wait.."} fontSize={25} />
     )
@@ -302,7 +533,7 @@ const DetailsPage = ({route, navigation}) => {
             flexDirection:'row',
             alignItems:'center',
             gap:10,
-            marginTop:30,
+           
         }}>
         <View style={{
             borderWidth:2,
@@ -312,8 +543,8 @@ const DetailsPage = ({route, navigation}) => {
         }}>
         <Image
         style={{
-          width:150,
-          height:150,
+          width:110,
+          height:110,
           opacity:0.9,
           borderRadius:100,
         }}
@@ -326,6 +557,7 @@ const DetailsPage = ({route, navigation}) => {
         <Text style={{
             fontSize:20,
             opacity:0.5,
+            marginLeft:7,
         }}>Hi Im,</Text>
         <View style={{
           flexDirection:'row',
@@ -337,9 +569,32 @@ const DetailsPage = ({route, navigation}) => {
             fontSize:35,
             fontWeight:'bold',
             opacity:0.7,
+            textTransform:'capitalize'
         }}>{n}</Text>
         <MaterialCommunityIcons name="hand-wave" size={27} color="coral" />
         </View>
+        <TouchableOpacity style={{
+      
+          height:35,
+          width:140,
+          marginTop:4,
+          borderRadius:10,
+          backgroundColor:'white',
+          flexDirection:'row',
+          gap:2,
+          justifyContent:'center',
+          alignItems:'center',
+          elevation:2,
+
+        }} onPress={handleShowModal}>
+                <AntDesign name="cloudupload" size={24} color="#FAB1A0" />
+          <Text style={{
+            textAlign:'center',
+            fontWeight:'bold',
+            color:'#FAB1A0',
+            fontSize:12,
+          }}>CHOOSE IMAGE</Text>
+        </TouchableOpacity>
         </View>
         </View>
         <View style={{
@@ -355,18 +610,24 @@ const DetailsPage = ({route, navigation}) => {
       
     />
       
-<Controller
+      <View style={{
+        flexDirection:'row',
+        justifyContent:'center',
+        alignItems:'center',
+        gap:5,
+      }}>
+      <Controller
         name="gender"
         defaultValue=""
         control={control}
         render={({ field: { onChange, value } }) => (
           <View style={{ 
-            width: "100%",
+            width: "50%",
             marginTop:5,
             }}>
             <DropDownPicker
               style={{borderColor: "#B7B7B7",
-              height: 50}}
+              height: 50, zIndex:100}}
               open={genderOpen}
               value={genders} 
               items={gender}
@@ -384,6 +645,39 @@ const DetailsPage = ({route, navigation}) => {
           </View>
         )}
       />
+
+<Controller
+        name="petslot"
+        defaultValue=""
+        control={control}
+        render={({ field: { onChange, value } }) => (
+          <View style={{ 
+            width: "50%",
+            marginTop:5,
+            }}>
+            <DropDownPicker
+              style={{borderColor: "#B7B7B7",
+              height: 50}}
+              open={slotOpen}
+              value={slotnumber} 
+              items={slot}
+              setOpen={setSlotOpen}
+              setValue={setSlotNumber}
+              placeholder="Select PetSlot"
+              placeholderStyle={{
+                color: "grey",
+              }}
+              onOpen={onSlotOpen}
+              onChangeValue={onChange}
+              zIndex={3000}
+              zIndexInverse={1000}
+            />
+          </View>
+        )}
+      />
+
+      </View>
+     
     <TextInput
       label="Goal Weight"
       mode='outlined'
@@ -404,19 +698,22 @@ const DetailsPage = ({route, navigation}) => {
       alignItems:'center',
       gap:10,
     }}>
+      
 
     <TextInput
       label="Weight"
       mode='outlined'
       activeOutlineColor='coral'
       style={{
-        width:'60%',
+        width:'57%',
       }}
 
       
-      value={`${w}`}
+      value={`${parseFloat(w).toFixed(2)}`}
       onChangeText={(val) => setW(val)} 
     />
+    
+  
     <TouchableOpacity style={{
       elevation:5,
       backgroundColor:'#FAB1A0',
@@ -455,11 +752,119 @@ const DetailsPage = ({route, navigation}) => {
     </TouchableOpacity>
     
     </View>
+    <View>
+      <Text>Select Goal month:</Text>
+      <View style={{
+      flexDirection:'row',
+      justifyContent:'center',
+      alignItems:'center',
+      gap:10,
+    }}>
+
+    <TextInput
+      label="Start date"
+      mode='outlined'
+      activeOutlineColor='coral'
+      style={{
+        width:'77%',
+      }}
+      disabled
+
+      
+      value={val}
+  
+    />
+    
+    
+    <TouchableOpacity style={{
+      elevation:5,
+      backgroundColor:'#FAB1A0',
+      width:'20%',
+      height:50,
+      marginTop:5,
+      justifyContent:'center',
+      alignItems:'center',
+      borderRadius:5,
+      flexDirection:'row',
+      gap:10,
+    }} onPress={()=>{
+      setDate1(true);
+    }}>
+     
+     <Fontisto name="date" size={20} color="white" />
+     {date1 && (
+ <DateTimePicker
+        testID="timePicker"
+        value={time1}
+        mode="date"
+        is24Hour={true}
+        display="default"
+        onChange={startdate1}
+        
+        /> 
+     )}
+    </TouchableOpacity>
+    
+    </View>
+    <View style={{
+      flexDirection:'row',
+      justifyContent:'center',
+      alignItems:'center',
+      gap:10,
+    }}>
+
+    <TextInput
+      label="End date"
+      mode='outlined'
+      activeOutlineColor='coral'
+      style={{
+        width:'77%',
+      }}
+      disabled
+
+      
+      value={val1}
+    
+    />
+    
+   
+    <TouchableOpacity style={{
+      elevation:5,
+      backgroundColor:'#FAB1A0',
+      width:'20%',
+      height:50,
+      marginTop:5,
+      justifyContent:'center',
+      alignItems:'center',
+      borderRadius:5,
+      flexDirection:'row',
+      gap:10,
+    }} onPress={()=>{
+      setDate2(true);
+    }}>
+     
+        <Fontisto name="date" size={20} color="white" />
+        {date2 && (
+ <DateTimePicker
+        testID="timePicker"
+        value={time}
+        mode="date"
+        is24Hour={true}
+        display="default"
+        onChange={startdate2}
+        /> 
+     )}
+           
+  
+    </TouchableOpacity>
+    
+    </View>
+    </View>
      <TextInput
       label="Date Added"
       mode='outlined'
       activeOutlineColor='coral'
-      value={moment(date.toDate()).calendar()}
+      value={moment(date).calendar()}
       disabled
     />
     <View style={{
@@ -543,18 +948,35 @@ const DetailsPage = ({route, navigation}) => {
         <TouchableOpacity
         style={{
           marginTop:20,
-          alignSelf:'center'
+          alignSelf:'center',
+          flexDirection:'row',
+          justifyContent:'center',
+          gap:5,
         }}
         onPress = {()=> {
           navigation.goBack();
         }}
         >
+          <FontAwesome name="home" size={16} color="black" />
         <Text style={{
           fontWeight:'bold',
           opacity:0.6,
-        }}>GO BACK TO HOME.</Text>
+        }}>GO BACK TO HOME</Text>
         </TouchableOpacity>
         </View>
+
+        <Modal isVisible={visible3} animationIn='slideInLeft' animationOut='fadeOut'>
+        <Box 
+        image={image}
+        handleCloseModal={handleCloseModal}
+        handlePickImage={handlePickImage}
+        pickImage={pickImage}
+        Dog={dogData}
+        Cat={catData}
+        handleSave={handleSave}
+        click={click}
+         />
+       </Modal>
 
         <Modal isVisible={visible} animationIn='slideInLeft'>
         <View style={{ height:70,
@@ -706,7 +1128,8 @@ const DetailsPage = ({route, navigation}) => {
           marginLeft:50,
          }}>
           <Text style={{
-            color:'coral'
+            color:'coral',
+            textTransform:'capitalize'
           }}>{Petname}</Text> list of schedule.</Text>
           <TouchableOpacity onPress={()=>{
             setShow(false)

@@ -6,6 +6,7 @@ import moment from 'moment/moment';
 const ListPet = ({navigation, dt, id, setVisible}) => {
 
   const {image,Petname, Weight, Gender, Age, DeviceName, GoalWeight, Created_at} = dt
+  const formattedDate = moment(Created_at).calendar();
 
   return (
     <View style={{
@@ -42,7 +43,7 @@ const ListPet = ({navigation, dt, id, setVisible}) => {
             fontWeight:'bold',
             fontSize:20,
         }}>{Petname}</Text>
-        <Text>Weight: {Weight}</Text>
+        <Text>Weight: {parseFloat(Weight).toFixed(2)}</Text>
         <Text>Age: {Age}</Text>
         <Text>Gender: {Gender}</Text>
       </View>
@@ -83,7 +84,7 @@ const ListPet = ({navigation, dt, id, setVisible}) => {
         color:'red',
         fontWeight:'bold',
         opacity:0.5
-      }} >{moment(Created_at.toDate()).calendar()}</Text>
+      }} >{formattedDate}</Text>
       </View>
       </View>
     

@@ -45,6 +45,16 @@ const PetListSched = ({data, handleUpdateTimeHere, updatingProccess, handleRemov
     }
   };
 
+  const convertToMilitaryTime3 = (time) => {
+    const date = new Date(`2000-01-01 ${time}`);
+    const militaryTimeValue = date.toLocaleTimeString('en-US', { hour12: true, hour: 'numeric', minute: '2-digit' });
+    const ampm = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: 'numeric', hour12: true }).slice(-2);
+    return militaryTimeValue.split(' ')[0].trim();
+
+
+ 
+  };  
+
 
 
  
@@ -96,7 +106,11 @@ const PetListSched = ({data, handleUpdateTimeHere, updatingProccess, handleRemov
         fontWeight:'bold',
         opacity:0.5,
         fontSize:15,
-      }}>Schedule Time: </Text>
+      }}>List of schedule time for <Text style={{
+        color: parseInt(data.Slot) === 1 ? "red":"blue",
+        fontWeight:'bold',
+        opacity:1,
+      }}>{parseInt(data.Slot) === 1 ? "Slot_one.":"Slot_two."}</Text></Text>
        {data.ScheduleTime.map((d, i)=> {
         return (
       
@@ -109,7 +123,7 @@ const PetListSched = ({data, handleUpdateTimeHere, updatingProccess, handleRemov
                     fontWeight:'bold',
                     opacity:0.6,
                     fontSize:18,
-                }}>{d.time} <Text style={{
+                }}>{convertToMilitaryTime3(d.time).split(":")[0] < 10 ? `0${convertToMilitaryTime3(d.time)}`: convertToMilitaryTime3(d.time)} <Text style={{
                   color:d.parameters === "PM" ? "red" : "blue"
                 }}>{d.parameters}</Text> / {d.cups} cups</Text>
                      <View style={{
@@ -301,7 +315,7 @@ const PetListSched = ({data, handleUpdateTimeHere, updatingProccess, handleRemov
            fontWeight:'bold'
           }}>Do you want to delete this time schedule <Text style={{
             color:'red',
-          }}>{time1}</Text></Text>
+          }}>{convertToMilitaryTime3(time1.split(" ")[0])} {time1.split(" ")[1]}</Text></Text>
           <View style={{
             flexDirection:'row',
             justifyContent:'center',
@@ -321,7 +335,8 @@ const PetListSched = ({data, handleUpdateTimeHere, updatingProccess, handleRemov
             flexDirection:'row',
             gap:5,
           }} onPress={()=>{
-            handleRemoveSchedTimeSched(time1, data.Days)
+            handleRemoveSchedTimeSched(time1, data.Days, setWarning)
+            
           }}>
             {updatingProccess ? 
             <>

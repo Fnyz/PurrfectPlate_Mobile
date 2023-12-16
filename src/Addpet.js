@@ -6,7 +6,7 @@ import { TextInput } from 'react-native-paper';
 import { AntDesign } from '@expo/vector-icons';
 import { FontAwesome5, Entypo  } from '@expo/vector-icons';
 import { Ionicons } from '@expo/vector-icons';
-import { Feather } from '@expo/vector-icons';
+import { Feather, Fontisto } from '@expo/vector-icons';
 import { FontAwesome } from '@expo/vector-icons';
 import { useDrawerStatus } from '@react-navigation/drawer';
 import * as ImagePicker from 'expo-image-picker';
@@ -25,6 +25,8 @@ import { Divider } from 'react-native-paper';
 import * as Permissions from 'expo-permissions';
 import * as FileSystem from 'expo-file-system';
 import AudioRecorded from './components/AudioRecorded';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import moment from 'moment';
 const Box = React.memo(({Cat, Dog, image, handleCloseModal, pickImage, handlePickImage, click, handleSave}) => {
   
   
@@ -166,6 +168,13 @@ const db = getFirestore(app)
 const AddPets= ({navigation}) => {
 
   const [loads, setloads] = useState(false)
+  const [date1, setDate1] = useState(false);
+  const [date2, setDate2] = useState(false)
+  const [time1, setTime1] = useState(new Date());
+  const [time, setTime] = useState(new Date());
+  const [val, setVal] = useState("");
+  const [val1, setVal1] = useState("");
+  const [notSet, setNowGoalMonth] = useState(false)
   const [catData, setCatData] = useState([]);
   const [dogData, setDogData] = useState([]);
   const[petName, setPetname] = useState('');
@@ -187,7 +196,7 @@ const AddPets= ({navigation}) => {
     { label: "Female", value: "female" },
     { label: "Prefer Not to Say", value: "neutral" },
   ]);
-
+  const [needSetGoalMonth, setNeedSetGoalMonth] = useState(false);
   const [visible, setVisible] = useState(false);
   const [loadingRf, setLoad1] = useState(false);
   const [loadingWth, setLoad2] = useState(false);
@@ -232,7 +241,28 @@ const AddPets= ({navigation}) => {
 
   
 
+  const startdate1 = (event, selectedStart) => {
+    setDate1(false);
+    if (selectedStart !== undefined) {
+      const formattedDate1 = moment(selectedStart).format('MM/D/YYYY');
+      setVal(formattedDate1);
+      setTime1(selectedStart);
+    
+    }
 
+  }
+
+  const startdate2 = (event, selectedEnd) => {
+setDate2(false);
+
+
+if (selectedEnd !== undefined) {
+  const formattedDate2 = moment(selectedEnd).format('MM/D/YYYY');
+  setVal1(formattedDate2);
+  setTime(selectedEnd);
+
+}
+      }
 
 
   // const startRecording = async () => {
@@ -423,6 +453,8 @@ const AddPets= ({navigation}) => {
       requestWeight:false,
       requestRfid:false,
       GoalWeight:GoalWeight,
+      StartGoalMonth:val === "" ? "Invalid Date" : val,
+      EndGoalMonth:val1 === "" ? "Invalid Date":val1,
     }).then( async()=>{
       const a =  await addDoc(collection(db, "Petbackup_data"),  {
         DeviceName:deviceName.trim(),
@@ -516,6 +548,8 @@ const AddPets= ({navigation}) => {
         RecordingFile:petRecord,
         requestWeight:false,
         requestRfid:false,
+        StartGoalMonth:val === "" ? "Invalid Date" : val,
+        EndGoalMonth:val1 === "" ? "Invalid Date":val1,
         Token:0,
         Slot,
         Created_at:Date.now(),
@@ -613,47 +647,19 @@ const AddPets= ({navigation}) => {
   
    
 
-    const blobToBase64 = (blob) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(blob);
-      return new Promise((resolve) => {
-        reader.onloadend = () => {
-          resolve(reader.result);
-        };
+    try {
+      const audioURI = recording.getURI();
+  
+      // Read the MP3 file
+      const fileContent = await FileSystem.readAsStringAsync(audioURI, {
+        encoding: FileSystem.EncodingType.Base64,
       });
-    };
-  
-    const audioURI = recording.getURI();
-    console.log(audioURI)
-    const blob = await new Promise((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
-      xhr.onload = function () {
-        resolve(xhr.response);
-      };
-      xhr.onerror = function (e) {
-        reject(new TypeError("Network request failed"));
-      };
-      xhr.responseType = "blob";
-      xhr.open("GET", audioURI, true);
-      xhr.send(null);
-    });
-  
-    const audioBase64 = await blobToBase64(audioURI);
-    setPetRecord(audioBase64);
-
-    // try {
-    //   const audioURI = recording.getURI();
-  
-    //   // Read the MP3 file
-    //   const fileContent = await FileSystem.readAsStringAsync(audioURI, {
-    //     encoding: FileSystem.EncodingType.Base64,
-    //   });
-    //   setPetRecord(fileContent);
-    //   // Set the Base64 representation of the MP3 file to state
+      setPetRecord(fileContent);
+      // Set the Base64 representation of the MP3 file to state
     
-    // } catch (error) {
-    //   console.error('Error converting MP3 to Base64:', error);
-    // }
+    } catch (error) {
+      console.error('Error converting MP3 to Base64:', error);
+    }
 
 
 
@@ -1070,7 +1076,7 @@ const AddPets= ({navigation}) => {
         marginHorizontal:2,
         borderRadius:5,
         flexDirection:'column',
-        justifyContent:'center',
+        justifyContent:'center',        
         backgroundColor:'white',
         gap:5,
         position:'relative',
@@ -1214,6 +1220,26 @@ const AddPets= ({navigation}) => {
       onChangeText={(val) => setSetGoalWeight(val)} 
 
     />
+   
+    <View style={{
+      flexDirection:'row',
+      gap:4,
+     marginTop:5,
+    }}>
+      <Text style={{
+        fontWeight:'bold',
+        opacity:0.7
+      }}>Do you want to set the goal month?</Text>
+      <TouchableOpacity onPress={()=> setNeedSetGoalMonth(true)}>
+      <Text style={{
+        fontStyle:'italic',
+        fontWeight:'bold',
+        color:'red'
+      }}>Click here</Text>
+      </TouchableOpacity>
+    </View>
+      
+  
      
     <View style={{
       flexDirection:'row',
@@ -1270,6 +1296,240 @@ const AddPets= ({navigation}) => {
         setRfid('');
         setWeight('');
         setPetType('')
+ }}>
+      <Text style={{
+        color:'#FAB1A0',
+        fontWeight:'bold'
+      }}>CLOSE</Text>
+    </TouchableOpacity>
+    </View>
+  
+        </View>
+      </Modal>
+
+      <Modal isVisible={needSetGoalMonth} animationIn='slideInLeft'>
+        <View style={{ height:!notSet ? 160: 270,
+        borderColor:'red',
+        marginHorizontal:2,
+        borderRadius:5,
+        flexDirection:'column',
+        justifyContent:'center',        
+        backgroundColor:'white',
+        gap:5,
+        position:'relative',
+        paddingHorizontal:20,
+        }}>
+          {!notSet && (
+            <>
+  <Text style={{fontWeight:'bold', fontSize:20}}>Warning!</Text>
+  <Text className='text-[12px] mb-3 opacity-40 font-bold'style={{
+   fontSize:15,
+   marginBottom:3,
+   opacity:0.5,
+   fontWeight:'bold'
+  }} >Please make sure you have already consulted the professional before setting the goal for the month.</Text>
+
+   
+            </>
+
+          )}
+          {notSet && (
+              <View>
+             <Text style={{fontWeight:'bold', fontSize:20}}>Select Goal Month</Text>
+  <Text className='text-[12px] mb-3 opacity-40 font-bold'style={{
+   fontSize:12,
+   marginBottom:3,
+   opacity:0.5,
+   fontWeight:'bold'
+  }} >Click the button on the right to choose the date.</Text>
+              <View style={{
+              flexDirection:'row',
+              justifyContent:'center',
+              alignItems:'center',
+              gap:10,
+            }}>
+        
+            <TextInput
+              label="Start date"
+              mode='outlined'
+              activeOutlineColor='coral'
+              style={{
+                width:'77%',
+              }}
+              disabled
+        
+              
+              value={val}
+          
+            />
+            
+            
+            <TouchableOpacity style={{
+              elevation:5,
+              backgroundColor:'#FAB1A0',
+              width:'20%',
+              height:50,
+              marginTop:5,
+              justifyContent:'center',
+              alignItems:'center',
+              borderRadius:5,
+              flexDirection:'row',
+              gap:10,
+            }} onPress={()=>{
+              setDate1(true);
+            }}>
+             
+             <Fontisto name="date" size={20} color="white" />
+             {date1 && (
+         <DateTimePicker
+                testID="timePicker"
+                value={time1}
+                mode="date"
+                is24Hour={true}
+                display="default"
+                onChange={startdate1}
+                
+                /> 
+             )}
+            </TouchableOpacity>
+            
+            </View>
+            <View style={{
+              flexDirection:'row',
+              justifyContent:'center',
+              alignItems:'center',
+              gap:10,
+            }}>
+        
+            <TextInput
+              label="End date"
+              mode='outlined'
+              activeOutlineColor='coral'
+              style={{
+                width:'77%',
+              }}
+              disabled
+        
+              
+              value={val1}
+            
+            />
+            
+           
+            <TouchableOpacity style={{
+              elevation:5,
+              backgroundColor:'#FAB1A0',
+              width:'20%',
+              height:50,
+              marginTop:5,
+              justifyContent:'center',
+              alignItems:'center',
+              borderRadius:5,
+              flexDirection:'row',
+              gap:10,
+            }} onPress={()=>{
+              setDate2(true);
+            }}>
+             
+                <Fontisto name="date" size={20} color="white" />
+                {date2 && (
+         <DateTimePicker
+                testID="timePicker"
+                value={time}
+                mode="date"
+                is24Hour={true}
+                display="default"
+                onChange={startdate2}
+                /> 
+             )}
+                   
+          
+            </TouchableOpacity>
+            
+            </View>
+            </View>
+          )}
+        
+    <View style={{
+      flexDirection:'row',
+      justifyContent:'center',
+      alignItems:'center',
+      gap:10,
+      marginVertical:10,
+      marginHorizontal:10,
+    }}>
+    {notSet ? (
+        <TouchableOpacity style={{
+   
+          width:'50%',
+          padding:10,
+          backgroundColor:'#FAB1A0',
+          borderRadius:3,
+          flexDirection:'row',
+          justifyContent:'center',
+          alignItems:'center',
+        
+       
+       
+        }} onPress={()=>{
+         
+         if(val === "" || val1 === ""){
+           Dialog.show({
+            type: ALERT_TYPE.DANGER,
+            title: 'Warning!',
+            textBody: 'Please input the start and end date.',
+            button: 'close',
+          })
+          return;
+         }
+         setNeedSetGoalMonth(false);
+         setNowGoalMonth(false);
+        }} >
+             <Text style={{
+               color:'white',
+               fontWeight:'bold',
+               
+             }}>SAVE</Text>
+           </TouchableOpacity>
+    ): (
+    <TouchableOpacity style={{
+   
+   width:'50%',
+   padding:10,
+   backgroundColor:'#FAB1A0',
+   borderRadius:3,
+   flexDirection:'row',
+   justifyContent:'center',
+   alignItems:'center',
+ 
+
+
+ }} onPress={()=>{
+  setNowGoalMonth(true);
+ }} >
+      <Text style={{
+        color:'white',
+        fontWeight:'bold',
+        
+      }}>SET NOW</Text>
+    </TouchableOpacity>
+
+    )}
+    <TouchableOpacity style={{
+    flexDirection:'row',
+    justifyContent:'center',
+    alignItems:'center',
+   width:'50%',
+   padding:10,
+   borderColor:'#FAB1A0',
+   borderRadius:3,
+   borderWidth:1,
+
+ }} onPress={()=>{
+        setNeedSetGoalMonth(false);
+        setNowGoalMonth(false);
+        setVal("");
+        setVal1("");
  }}>
       <Text style={{
         color:'#FAB1A0',

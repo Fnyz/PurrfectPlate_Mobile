@@ -83,7 +83,7 @@ const DashBoard = ({navigation,route: {params: { credentials }}}) => {
           where("type", "==", "User"),
           orderBy("createdAt", "desc")
         );
-        const fetchData =async () => {
+       
           const notificationsData = [];
         
           const unsubscribe = onSnapshot(q, (querySnapshot) => {
@@ -101,7 +101,7 @@ const DashBoard = ({navigation,route: {params: { credentials }}}) => {
                 );
         
                 const userUnsubscribe = onSnapshot(usersQuery, (usersQuerySnapshot) => {
-                  usersQuerySnapshot.forEach(async(userDoc) => {
+                  usersQuerySnapshot.forEach((userDoc) => {
                     notificationsData.push({
                       name: userDoc.data().username,
                       weight: null,
@@ -113,7 +113,7 @@ const DashBoard = ({navigation,route: {params: { credentials }}}) => {
                     setNotifications([...notificationsData]); // Update state with new data
         
                     // Save data in localStorage
-                   await AsyncStorage.setItem("notifications", JSON.stringify(notificationsData));
+                   AsyncStorage.setItem("notifications", JSON.stringify(notificationsData));
                   });
                 });
               }
@@ -126,7 +126,7 @@ const DashBoard = ({navigation,route: {params: { credentials }}}) => {
               );
         
               const petUnsubscribe = onSnapshot(listOfPetsQuery, (petsQuerySnapshot) => {
-                petsQuerySnapshot.forEach(async(petDoc) => {
+                petsQuerySnapshot.forEach((petDoc) => {
                   notificationsData.push({
                     name: petDoc.data().Petname,
                     weight: petDoc.data().Weight,
@@ -139,7 +139,7 @@ const DashBoard = ({navigation,route: {params: { credentials }}}) => {
 
                   
                   // Save data in localStorage
-                await AsyncStorage.setItem("notifications", JSON.stringify(notificationsData));
+                AsyncStorage.setItem("notifications", JSON.stringify(notificationsData));
                 });
               });
              }
@@ -148,9 +148,9 @@ const DashBoard = ({navigation,route: {params: { credentials }}}) => {
           });
         
           return unsubscribe;
-        };
+     
 
-        fetchData();
+        
         
       }
    
@@ -166,8 +166,6 @@ const DashBoard = ({navigation,route: {params: { credentials }}}) => {
           const parsedNotifications = JSON.parse(storedNotifications);
           setNotifications(parsedNotifications);
         }
-
-  
       });
     }, []);
     
@@ -325,7 +323,7 @@ const DashBoard = ({navigation,route: {params: { credentials }}}) => {
  
 
 
-  if(false){
+  if(loading){
     return (
       <PurrfectPlateLoadingScreen message={"WELCOME TO PURRFECT PLATE"} fontSize={20} />
     )
@@ -671,7 +669,7 @@ const DashBoard = ({navigation,route: {params: { credentials }}}) => {
           autoplay 
           loop
           showsButtons
-         
+        
           activeDot={
             <View
               style={{
@@ -688,7 +686,7 @@ const DashBoard = ({navigation,route: {params: { credentials }}}) => {
           }
           >
 
-         {notif.map((item, i)=> {
+         {notif.slice(0, 3).map((item, i)=> {
             return (
 <View style={{
                     width:360,

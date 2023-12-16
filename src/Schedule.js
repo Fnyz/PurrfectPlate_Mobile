@@ -191,14 +191,19 @@ const Schedule = ({navigation, route}) => {
 
 
 
-  const handleRemoveSchedTimeSched = async (time, days) => {
+
+  const handleRemoveSchedTimeSched = async (time, days, setwarn) => {
     setUpdatingProccess(true)
-    const a = petSchesData.find((d) => d.data.Days === days && d.data.DeviceName === deviceName)
-    const b = a?.data.ScheduleTime.filter((d) => d.time !== time );
    
+    const a = petSchesData.find((d) => d.data.Days === days && d.data.DeviceName === deviceName)
+    const b = a?.data.ScheduleTime.filter((d) => d.time !== time.split(" ")[0]);
+
     if(a.data.ScheduleTime.length - 1 === 0){
-      setUpdatingProccess(false)
+      setUpdatingProccess(true)
+      
       await deleteDoc(doc(db, "feeding_schedule",a.id)).then(()=>{
+        setwarn(false);
+        setUpdatingProccess(false);
         Dialog.show({
           type: ALERT_TYPE.DANGER,
           title: 'Success!',
@@ -213,6 +218,7 @@ const Schedule = ({navigation, route}) => {
      ScheduleTime:b,
   }).then(()=>{
     setUpdatingProccess(false)
+    setwarn(false);
     Dialog.show({
       type: ALERT_TYPE.DANGER,
       title: 'Success!',
@@ -236,6 +242,51 @@ const Schedule = ({navigation, route}) => {
     const c = a?.data.ScheduleTime.find((d) => d.time === time.split(" ")[0].trim());
     const res  = petData.find(d => d.data.Days === days.trim() && d.data.DeviceName === deviceName);
 
+    const res1  = petData.find(d => d.data.Days === days.trim() && d.data.DeviceName === deviceName && d.data.Petname === petNameVal);
+    const combinedData1 = [];
+    const filteredArray1 = slots?.filter((a) => {
+      return a.data.Slot == res1?.data.Slot &&  a.data.Days == res1?.data.Days;
+    });  
+
+   
+    filteredArray1?.forEach((item) => {
+ const petname = item.data?.Petname;
+ const scheduleTimes = item.data.ScheduleTime.map((time) => {
+   return { petname, sched:time };
+ });
+ combinedData1.push(...scheduleTimes);
+});
+
+
+function convertTimeStringToDate(timeString) {
+  const currentDate = new Date();
+
+  const [hours, minutes] = timeString.split(':');
+
+  currentDate.setHours(parseInt(hours, 10));
+  currentDate.setMinutes(parseInt(minutes, 10));
+
+  return currentDate;
+}
+
+  
+
+    const isDisabled1 = combinedData1.some(
+      (a) =>
+        Math.abs(convertTimeStringToDate(a.sched.time) - convertTimeStringToDate(time.split(" ")[0].trim())) <= (9 * 60 * 1000) // 10 minutes in milliseconds
+       );
+
+
+       if(isDisabled1){
+        setUpdatingProccess(false)
+        Dialog.show({
+          type: ALERT_TYPE.DANGER,
+          title: 'Warning!',
+          textBody: `You can only set a new schedule time after at least 10 minutes on ${parseInt(res1.data.Slot) === 1 ? "Slot_one": "Slot_two"}, please check your pet schedules properly.`,
+          button: 'close',
+        })
+        return;
+      }
 
 
 
@@ -273,6 +324,7 @@ const Schedule = ({navigation, route}) => {
     return;
   }else{
 
+    
        if(c){
       setUpdatingProccess(false)
       Dialog.show({
@@ -283,9 +335,6 @@ const Schedule = ({navigation, route}) => {
       })
       return;
     }
-
-    
-
 
     if(b){
      const res = a?.data.ScheduleTime.filter(d => d.time !== currenTime.split(" ")[0].trim());
@@ -332,18 +381,7 @@ const Schedule = ({navigation, route}) => {
 
   handleSetPetSched = async () => {
     
-    const h = listPets.find((a)=>a.data.DeviceName.toLowerCase().trim() === deviceName.toLowerCase().trim() && a.data.Petname.trim().toLowerCase() === petNameVal.trim().toLowerCase())
-
-    const petSchedule = {
-      Petname: petNameVal,
-      Days: day,
-      DeviceName: deviceName.trim(),
-      ScheduleTime: foodItems,
-      synced:false,
-      petId:h?.id, 
-      Slot:h.data.Slot,
-    }
-
+    
 
     setVisible(true);
 
@@ -356,6 +394,17 @@ const Schedule = ({navigation, route}) => {
         button: 'close',
       })
       return;
+    }
+    const h = listPets.find((a)=>a.data.DeviceName.toLowerCase().trim() === deviceName.toLowerCase().trim() && a.data.Petname.trim().toLowerCase() === petNameVal.trim().toLowerCase())
+
+    const petSchedule = {
+      Petname: petNameVal,
+      Days: day,
+      DeviceName: deviceName.trim(),
+      ScheduleTime: foodItems,
+      synced:false,
+      petId:h?.id, 
+      Slot:h.data.Slot,
     }
 
 
@@ -463,13 +512,18 @@ const Schedule = ({navigation, route}) => {
   
 
    //trace if that schedule is already exists
-    const res  = petData.find(d => d.data.Days === day.trim() && d.data.DeviceName === deviceName);
+    const res  = petData.find(d => d.data.Days === day.trim() && d.data.DeviceName === deviceName && d.data.Petname === petNameVal);
+  
 
     const combinedData = [];
 
     const filteredArray = slots?.filter((a) => {
-      return a.data.Slot === res?.data.Slot &&  a.data.Days === res?.data.Days;
+      return a.data.Slot !== res?.data.Slot &&  a.data.Days !== res?.data.Days;
     });
+
+
+    
+  
     filteredArray?.forEach((item) => {
  const petname = item.data?.Petname;
  const scheduleTimes = item.data.ScheduleTime.map((time) => {
@@ -494,7 +548,7 @@ const Schedule = ({navigation, route}) => {
       Dialog.show({
                 type: ALERT_TYPE.DANGER,
                 title: 'Warning!',
-                textBody:rs?.petname === petNameVal ? `You already set this time on ${res?.data.Slot==1 ? "SLOT ONE": "SLOT TWO"}` : `${timeOnly} is already set to ${rs?.petname} in ${res?.data.petSlot=="slot_one"? "SLOT_ONE": "SLOT_TWO"} on the pet schedule, please choose other time.`,
+                textBody:rs?.petname === petNameVal ? `You already set this time on ${parseInt(res?.data.Slot) ===1 ? "SLOT ONE": "SLOT TWO"}` : `${timeOnly} is already set to ${rs?.petname} in ${parseInt(res?.data.Slot) === 1 ? "SLOT_ONE": "SLOT_TWO"} on the pet schedule, please choose other time.`,
                 button: 'close',
       })
 
@@ -509,12 +563,83 @@ const Schedule = ({navigation, route}) => {
           Dialog.show({
             type: ALERT_TYPE.DANGER,
             title: 'Warning!',
-            textBody: `Time ${formattedTime} already set on the pet schedule, please choose other time.`,
+            textBody: `${res.data.Petname === petNameVal ? `You already set ${formattedTime} on your pet schedule time, please choose other time.`: `Time ${formattedTime} already set on the pet schedule, please choose other time.`}`, 
             button: 'close',
           })
           return;
   
     }
+
+    
+    
+
+    function convertTimeStringToDate(timeString) {
+      const currentDate = new Date();
+    
+      const [hours, minutes] = timeString.split(':');
+    
+      currentDate.setHours(parseInt(hours, 10));
+      currentDate.setMinutes(parseInt(minutes, 10));
+
+      return currentDate;
+    }
+
+   
+  
+    const combinedData1 = [];
+    const filteredArray1 = slots?.filter((a) => {
+      return a.data.Slot == res?.data.Slot &&  a.data.Days == res?.data.Days;
+    });  
+
+    filteredArray1?.forEach((item) => {
+ const petname = item.data?.Petname;
+ const scheduleTimes = item.data.ScheduleTime.map((time) => {
+   return { petname, sched:time };
+ });
+ combinedData1.push(...scheduleTimes);
+});
+
+
+
+
+  
+
+    const isDisabled1 = combinedData1.some(
+      (a) =>
+        Math.abs(convertTimeStringToDate(a.sched.time) - convertTimeStringToDate(formattedTime.split(' ')[0])) <= (9 * 60 * 1000) // 10 minutes in milliseconds
+       );
+
+
+       if(isDisabled1){
+    
+        Dialog.show({
+          type: ALERT_TYPE.DANGER,
+          title: 'Warning!',
+          textBody: `You can only set a new schedule time after at least 10 minutes on ${parseInt(res.data.Slot) === 1 ? "Slot_one": "Slot_two"}, please check your pet schedules properly.`,
+          button: 'close',
+        })
+        return;
+      }
+
+
+    const isDisabled = foodItems.some(
+      (a) =>
+        Math.abs(convertTimeStringToDate(a.time) - convertTimeStringToDate(formattedTime.split(' ')[0])) <= (9 * 60 * 1000) // 10 minutes in milliseconds
+    );
+
+
+    if(isDisabled){
+
+      Dialog.show({
+        type: ALERT_TYPE.DANGER,
+        title: 'Warning!',
+        textBody: `You can only set a new schedule time after at least 10 minutes on ${parseInt(res.data.Slot) === 1 ? "Slot_one": "Slot_two"}.`,
+        button: 'close',
+      })
+      return;
+    }
+   
+    
 
     // Check if the time already exists in the list
     const existingItem = foodItems.find((item) => item.time.split(' ')[0] === formattedTime.split(' ')[0]);
@@ -528,8 +653,10 @@ const Schedule = ({navigation, route}) => {
       return;
     }
 
+    const timeAdded = formattedTime.split(' ')[0];
+   
     // Add the new food item and time to the list
-    setFoodItems([...foodItems, { time: formattedTime.split(' ')[0], cups: caps, parameters: formattedTime.split(' ')[1].trim() }]);
+    setFoodItems([...foodItems, { time: timeAdded , cups: caps, parameters: formattedTime.split(' ')[1].trim() }]);
     setCaps('');  
     setFormattedTime('');
     }
@@ -565,6 +692,8 @@ const Schedule = ({navigation, route}) => {
   ]
 
 
+ 
+
  const getSchedule = (name) => {
   const q = query(collection(db, "feeding_schedule"), where("Petname", "==", name));
   onSnapshot(q, (querySnapshot) => {
@@ -598,6 +727,16 @@ const Schedule = ({navigation, route}) => {
   handleSetDays = (day) => {
     setDay(day);
   }
+
+  const convertToMilitaryTime3 = (time) => {
+    const date = new Date(`2000-01-01 ${time}`);
+    const militaryTimeValue = date.toLocaleTimeString('en-US', { hour12: true, hour: 'numeric', minute: '2-digit' });
+    const ampm = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: 'numeric', hour12: true }).slice(-2);
+    return militaryTimeValue.split(' ')[0].trim();
+
+
+ 
+  };  
  
   const [loading, setLoading] = useState(false);
 
@@ -608,11 +747,11 @@ const Schedule = ({navigation, route}) => {
 
 
   
-  if(loads){
-    return (
-      <PurrfectPlateLoadingScreen message={"Please wait.."} fontSize={25} />
-    )
-  }
+  // if(loads){
+  //   return (
+  //     <PurrfectPlateLoadingScreen message={"Please wait.."} fontSize={25} />
+  //   )
+  // }
 
 
   return (
@@ -971,7 +1110,7 @@ const Schedule = ({navigation, route}) => {
                 fontSize:17,
                 color:'white'   
               }}>
-                {`${item.time} ${item.parameters}`}
+                {`${convertToMilitaryTime3(item.time).split(":")[0] < 10 ? `0${convertToMilitaryTime3(item.time)}`: convertToMilitaryTime3(item.time)} ${item.parameters}`}
               </Text>
               <Text style={{
                 fontSize:30, 
@@ -1130,7 +1269,7 @@ const Schedule = ({navigation, route}) => {
           }}>/</Text> <Text style={{
             fontWeight:'bold',
             fontSize:25,
-          }}>{petNameVal}'s</Text> set schedules</Text>
+          }}>{petNameVal}'s</Text> list of schedules.</Text>
           <TouchableOpacity onPress={closeModals}>
             <Feather name="x" size={25} color="red" style={{
               marginRight:7,
@@ -1140,7 +1279,32 @@ const Schedule = ({navigation, route}) => {
             }}/>
           </TouchableOpacity>
           </View>
-         
+         {!petSchesData.length && (
+            <View style={{
+              width:'100%',
+              justifyContent:'center',
+              alignItems:'center',
+              flex:1,
+            }}>
+                <Image
+        style={{
+          width:150,
+          height:150,
+          opacity:0.9,
+        }}
+        source={require('../assets/Doggy1.png')}
+        contentFit="cover"
+        transition={1000}
+      />
+              <Text style={{
+                fontWeight:'bold'
+              }}>No list of schedule found for pet <Text style={{
+                textTransform: 'uppercase',
+                color:'red'
+              }}>{petNameVal}</Text>.</Text>
+            </View>
+         )}
+         {petSchesData.length > 0 && (
           <View >
           <FlatList
         data={petSchesData}
@@ -1153,6 +1317,8 @@ const Schedule = ({navigation, route}) => {
           />
           
           </View>
+
+         )}
         </View>
        </Modal>
       </ImageBackground>
