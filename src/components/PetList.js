@@ -5,7 +5,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 const PetList = ({navigation, dt, id}) => {
 
-  const {image,Petname, Weight, Gender, Age, DeviceName, GoalWeight, Created_at, Slot, petType, StartGoalMonth, EndGoalMonth} = dt
+  const {image,Petname, Weight, Gender, Age, DeviceName, GoalWeight, Created_at, Slot, petType, StartGoalMonth, EndGoalMonth, Rfid} = dt
 
 
   return (
@@ -43,7 +43,7 @@ opacity:0.7,
         }}>
         {petType === "dog" &&  <MaterialCommunityIcons name="dog" size={20} color="black" />}
         {petType === "cat" &&  <MaterialCommunityIcons name="cat" size={20} color="black" />}
-        {petType !== "cat" || petType !== "dog" &&  <MaterialCommunityIcons name="pets" size={20} color="black" />}
+        {petType !== "cat" &&  petType !== "dog" &&  <MaterialCommunityIcons name="pets" size={20} color="black" />}
        
       <Text style={{
        
@@ -127,6 +127,7 @@ opacity:0.7,
         StartGoalMonth,
         EndGoalMonth,
         Slot,
+        Rfid,
         id:id
       })}>
       <MaterialCommunityIcons name="view-list" size={42} color="#908EDF" />

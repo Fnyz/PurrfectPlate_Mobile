@@ -91,6 +91,7 @@ const NotificationList = ({image, name, message, weight, navigation, createdAt})
         marginTop:15,
         opacity:0.7
     }}>* {moment(createdAt).calendar()}</Text>
+    {!weight && (
     <TouchableOpacity style={{
         flexDirection:'row',
         alignItems:'center',
@@ -102,20 +103,14 @@ const NotificationList = ({image, name, message, weight, navigation, createdAt})
         gap:10,
         opacity:0.9,
         elevation:1,
-    }} onPress={()=>navigation.navigate('DetailsPage',{
-      img:image,
-      weight:20,
-      gender:'male',
-      age:5,
-      name,
-      date
-    })}>
+    }} onPress={()=>navigation.navigate('Report')}>
   <MaterialCommunityIcons name="view-list" size={24} color="white" />
         <Text style={{
             color:'white',
             fontWeight:'bold'
         }}>VIEW</Text>
     </TouchableOpacity>
+    )}
 
     </View>
    

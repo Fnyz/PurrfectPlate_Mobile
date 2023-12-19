@@ -513,12 +513,12 @@ function convertTimeStringToDate(timeString) {
 
    //trace if that schedule is already exists
     const res  = petData.find(d => d.data.Days === day.trim() && d.data.DeviceName === deviceName && d.data.Petname === petNameVal);
-  
+    const res1  = listPets.find(d =>  d.data.DeviceName === deviceName && d.data.Petname === petNameVal);
 
     const combinedData = [];
 
     const filteredArray = slots?.filter((a) => {
-      return a.data.Slot !== res?.data.Slot &&  a.data.Days !== res?.data.Days;
+      return a.data.Slot == res1?.data.Slot;
     });
 
 
@@ -548,7 +548,7 @@ function convertTimeStringToDate(timeString) {
       Dialog.show({
                 type: ALERT_TYPE.DANGER,
                 title: 'Warning!',
-                textBody:rs?.petname === petNameVal ? `You already set this time on ${parseInt(res?.data.Slot) ===1 ? "SLOT ONE": "SLOT TWO"}` : `${timeOnly} is already set to ${rs?.petname} in ${parseInt(res?.data.Slot) === 1 ? "SLOT_ONE": "SLOT_TWO"} on the pet schedule, please choose other time.`,
+                textBody:rs?.petname === petNameVal ? `You already set this time on ${parseInt(res1?.data.Slot) ===1 ? "SLOT ONE": "SLOT TWO"}` : `${timeOnly} is already set to ${rs?.petname} in ${parseInt(res1?.data.Slot) === 1 ? "SLOT_ONE": "SLOT_TWO"} on the pet schedule, please choose other time.`,
                 button: 'close',
       })
 
@@ -586,25 +586,25 @@ function convertTimeStringToDate(timeString) {
 
    
   
-    const combinedData1 = [];
-    const filteredArray1 = slots?.filter((a) => {
-      return a.data.Slot == res?.data.Slot &&  a.data.Days == res?.data.Days;
-    });  
+//     const combinedData1 = [];
+//     const filteredArray1 = slots?.filter((a) => {
+//       return a.data.Slot == res?.data.Slot &&  a.data.Days == res?.data.Days;
+//     });  
 
-    filteredArray1?.forEach((item) => {
- const petname = item.data?.Petname;
- const scheduleTimes = item.data.ScheduleTime.map((time) => {
-   return { petname, sched:time };
- });
- combinedData1.push(...scheduleTimes);
-});
+//     filteredArray1?.forEach((item) => {
+//  const petname = item.data?.Petname;
+//  const scheduleTimes = item.data.ScheduleTime.map((time) => {
+//    return { petname, sched:time };
+//  });
+//  combinedData1.push(...scheduleTimes);
+// });
 
 
 
 
   
 
-    const isDisabled1 = combinedData1.some(
+    const isDisabled1 = combinedData.some(
       (a) =>
         Math.abs(convertTimeStringToDate(a.sched.time) - convertTimeStringToDate(formattedTime.split(' ')[0])) <= (9 * 60 * 1000) // 10 minutes in milliseconds
        );
@@ -615,7 +615,7 @@ function convertTimeStringToDate(timeString) {
         Dialog.show({
           type: ALERT_TYPE.DANGER,
           title: 'Warning!',
-          textBody: `You can only set a new schedule time after at least 10 minutes on ${parseInt(res.data.Slot) === 1 ? "Slot_one": "Slot_two"}, please check your pet schedules properly.`,
+          textBody: `You can only set a new schedule time after at least 10 minutes on ${parseInt(res1.data.Slot) === 1 ? "Slot_one": "Slot_two"}, please check your pet schedules properly.`,
           button: 'close',
         })
         return;
@@ -633,7 +633,7 @@ function convertTimeStringToDate(timeString) {
       Dialog.show({
         type: ALERT_TYPE.DANGER,
         title: 'Warning!',
-        textBody: `You can only set a new schedule time after at least 10 minutes on ${parseInt(res.data.Slot) === 1 ? "Slot_one": "Slot_two"}.`,
+        textBody: `You can only set a new schedule time after at least 10 minutes on ${parseInt(res1.data.Slot) === 1 ? "Slot_one": "Slot_two"}.`,
         button: 'close',
       })
       return;

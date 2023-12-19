@@ -15,8 +15,8 @@ import app from './firebase';
 import { getFirestore, collection, addDoc, query, where, onSnapshot, getDocs,updateDoc, doc, deleteDoc, setDoc } from 'firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useState } from 'react';
+import { useTimer } from './TimeContext';
 const db = getFirestore(app);
-
 
 
 const Live = ({navigation}) => {
@@ -40,6 +40,31 @@ const Live = ({navigation}) => {
   const [qouta, setqoutaWarning] = useState(false);
   const [message2, setMessage2] = React.useState('Something went wrong, please click the bottom to request again to see the live video.');
   const isDrawerOpen = useDrawerStatus() === 'open';
+  const [showTimer, setShowTimer] = useState(false);
+
+
+
+  const { count, resetTimer } = useTimer();
+
+  const formatTime = (timeInSeconds) => {
+    const minutes = Math.floor(timeInSeconds / 60);
+    const seconds = timeInSeconds % 60;
+    return `${minutes < 10 ? '0' : ''}${minutes} mins ${seconds < 10 ? '0' : ''}${seconds} secs`;
+  };
+
+
+  useEffect(() => {
+    console.log('Count in UI:', count);
+  
+    // Additional logic based on the count in the UI
+    if (count === 0) {
+      fetchLiveStreams(apiKey1, channel, liveiD)
+      setShowTimer(false);
+    }
+  
+  }, [count]);
+  
+
   const handleOpenDrawer = () => {
     navigation.openDrawer();
   }
@@ -47,7 +72,7 @@ const Live = ({navigation}) => {
   const handleRefetch =async () => {
    setloading1(true)
    
-    const apiUrl = `https://www.googleapis.com/youtube/v3/search?key=${apiKey1}&channelId=${channel}&eventType=live&type=video&part=snippet,id`;
+    const apiUrl = `https://www.googleapis.com/youtube/v3/search?key=${apiKey1}&channelId=${channel}&eventType=live&type=video&part=snippet`;
 
     fetch(apiUrl)
       .then(response =>
@@ -122,7 +147,7 @@ const Live = ({navigation}) => {
     
    
     // Step 1: Get live broadcasts associated with the channel
-const apiUrl = `https://www.googleapis.com/youtube/v3/search?key=${apiKey}&channelId=${channelId}&eventType=live&type=video&part=snippet,id`;
+const apiUrl = `https://www.googleapis.com/youtube/v3/search?key=${apiKey}&channelId=${channelId}&eventType=live&type=video&part=snippet`;
 
 fetch(apiUrl)
   .then(response => {
@@ -352,8 +377,11 @@ fetch(apiUrl)
 
       if(DeviceName == credential.DeviceName.trim() && isliveNow == true && !Youtube_Url && !ended){
         setMessage('Please wait for a minute, proccessing youtube url.');
-        fetchLiveStreams(ApiKey ,ChannelID, change.doc.id);
-        setloading(true);
+        setShowTimer(true);
+        setApiKey(ApiKey)
+        setChannel(ChannelID)
+        setLiveId(change.doc.id)
+        setloading(false);
         return;
       }
  
@@ -896,8 +924,8 @@ fetch(apiUrl)
       <Modal isVisible={visible1} animationIn='slideInLeft'>
           <View style={{
             width:'100%',
-            backgroundColor:'white',
-            height:'35%',
+            backgroundColor:'white', 
+            height:'43%',
             alignItems:'center',
             borderRadius:10,
           }}>
@@ -923,19 +951,19 @@ fetch(apiUrl)
               padding:10,
               justifyContent:'center',
               alignItems:'center',
-              flexDirection:'row',
+              flexDirection:'column',
               gap:10,
               marginTop:10,
             }}>
            {!qouta && (
             <TouchableOpacity style={{
                 
-              width:'30%',
+              width:'100%',
               height:40,
               justifyContent:'center',
               alignItems:'center',
               borderTopLeftRadius:10,
-              borderBottomLeftRadius:10,
+              borderTopRightRadius:10,
               backgroundColor:'#FAB1A0'
             }} disabled={load1? true: false} onPress={handleRefetch}>
               {load1 ?
@@ -968,15 +996,21 @@ fetch(apiUrl)
            )}
             
 
-              
+              <View style={{
+                flexDirection:'row',
+                justifyContent: 'center',
+                alignItems:'center',
+                gap:10,
+                paddingHorizontal:6,
+                marginLeft:2,
+              }}>
               <TouchableOpacity style={{
                 
-                width: !qouta? '30%': '50%',
+                width: !qouta? '40%': '50%',
                 height:40,
                 justifyContent:'center',
                 alignItems:'center',
-                borderTopRightRadius:!qouta? 10:0,
-                borderBottomRightRadius:!qouta? 10:0,
+                borderBottomLeftRadius:10,
                 backgroundColor:'white',
                 borderWidth:1,
                 borderColor:'#FAB1A0',
@@ -1033,6 +1067,7 @@ fetch(apiUrl)
       color:'#FAB1A0',
       fontWeight:'bold',  
       fontSize:15,
+      fontStyle:'italic'
     }}>Wait</Text>
   </View>
 ):(
@@ -1040,11 +1075,44 @@ fetch(apiUrl)
   color:'#FAB1A0',
   fontWeight:'bold',
   fontSize:15,
-}}>GO HOME</Text>
+  fontStyle:'italic'
+}}>CANCEL</Text>
 
 )}
             
               </TouchableOpacity>
+
+
+              <TouchableOpacity style={{
+                
+                width: !qouta? '60%': '50%',
+                height:40,
+                justifyContent:'center',
+                alignItems:'center',
+                backgroundColor:'white',
+                borderWidth:1,
+                borderBottomRightRadius:10,
+                borderColor:'#FAB1A0',
+              }} onPress={()=>{
+                navigation.replace('Homepage',
+                {
+                 screen: 'Dashboard',
+                 params: {credentials: userData },
+               });
+              }}>
+               
+                 
+ 
+<Text style={{
+  color:'#FAB1A0',
+  fontWeight:'bold',
+  fontSize:15,
+}}>GO HOME</Text>
+
+
+            
+              </TouchableOpacity>
+              </View>
               
               
             
@@ -1168,6 +1236,73 @@ fetch(apiUrl)
             
              
             </View>
+          </View>
+        
+      </Modal>
+
+      <Modal isVisible={showTimer} animationIn='slideInLeft' >
+          <View style={{
+       
+            backgroundColor:'white',
+            height: '40%',
+            justifyContent:'center',
+            borderRadius:10,
+            alignItems:'center',
+            padding:10,
+          }}>
+              <Image
+        style={{
+          width:150,
+          height:150,
+          opacity:0.9,
+        }}
+        source={require('../assets/Doggy1.png')}
+        contentFit="cover"
+        transition={1000}
+      /> 
+          
+           <Text style={{
+              fontSize:15,
+              fontWeight:'700',
+              textAlign:'center',
+            }}>Livestreaming is not ready yet; please wait until 3 minutes to see the livestream.</Text>
+                 
+       
+           
+                 <View>
+
+     
+      <Text style={{ fontSize: 15, marginTop:10, fontWeight:'bold'}}>Time Remaining: <Text style={{
+        color:'red',
+      }}>{formatTime(count)}.</Text></Text>
+      <TouchableOpacity style={{
+                height:40,
+                marginTop:20,
+                justifyContent:'center',
+                alignItems:'center',
+                backgroundColor:'white',
+   
+                backgroundColor:'#FAB1A0',
+                borderRadius:10,
+              }} onPress={()=>{
+                navigation.replace('Homepage',
+                {
+                 screen: 'Dashboard',
+                 params: {credentials: userData },
+               });
+              }}>
+ 
+<Text style={{
+  color:'white',
+  fontWeight:'bold',
+  fontSize:15,
+}}>GO HOME</Text>
+
+
+            
+              </TouchableOpacity>
+           
+    </View>
           </View>
         
       </Modal>

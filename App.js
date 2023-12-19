@@ -19,7 +19,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import Reports from './src/Reports';
 import ProfileUpdate from './src/ProfileUpdate';
 import UpdatePassword from './src/UpdatePassword';
-
+import { TimerProvider } from './src/TimeContext';
 
 
 
@@ -116,6 +116,7 @@ function NavDrawer() {
 
 const AppStack = () => {
   return (
+    <TimerProvider>
       <Stack.Navigator  
       screenOptions={{
       headerShown: false
@@ -129,6 +130,7 @@ const AppStack = () => {
         <Stack.Screen name="UpdateProfile" component={ProfileUpdate} />
         <Stack.Screen name="UpdatePassword" component={UpdatePassword} />
       </Stack.Navigator>
+      </TimerProvider>
   );
 };
 

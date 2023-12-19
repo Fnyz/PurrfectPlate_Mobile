@@ -154,9 +154,9 @@ const Box = React.memo(({Cat, Dog, image, handleCloseModal, pickImage, handlePic
 
 
 const DetailsPage = ({route, navigation}) => {
-  const {image, Weight, Gender, Age, Petname, date, DeviceName, id, GoalWeight, StartGoalMonth, EndGoalMonth, Slot} = route.params;
+  const {image, Weight, Gender, Age, Petname, date, DeviceName, id, GoalWeight, StartGoalMonth, EndGoalMonth, Slot, Rfid} = route.params;
   const [visible2, setVisible2] = useState(false)
- 
+  const [rfid, setRFID] = useState("")
   const [catData, setCatData] = useState([]);
   const [dogData, setDogData] = useState([]);
   const [date1, setDate1] = useState(false);
@@ -192,6 +192,7 @@ const DetailsPage = ({route, navigation}) => {
   const[slotnumber, setSlotNumber] = useState('');
   
   const [loadingWth, setLoad2] = useState(false);
+  const [loadingRf, setLoad3] = useState(false);
   const [petSchesData, setPetSchedDataset] = useState([]);
 
 
@@ -209,6 +210,13 @@ const DetailsPage = ({route, navigation}) => {
           
             return;
           }
+
+          if (change.doc.data().Rfid && change.doc.data().Petname === Petname && change.doc.data().Token === 0) {
+            setRFID(change.doc.data().Rfid)
+            setLoad3(false)
+            return;
+          }
+      
       
   
         });
@@ -235,6 +243,7 @@ const DetailsPage = ({route, navigation}) => {
    setImg(image)
    setGw(GoalWeight);
    setSlotNumber(Slot)
+   setRFID(Rfid)
    setVal(StartGoalMonth === "Invalid Date" ? null: StartGoalMonth);
    setVal1(EndGoalMonth  === "Invalid Date" ? null: EndGoalMonth);
   },[])
@@ -375,9 +384,28 @@ if (selectedEnd !== undefined) {
     });
     }
   
+    const handleFakeRfid = async () => {
+      setLoad3(true);
+      setRFID("");
+      const petWeightss = doc(db, "List_of_Pets", id);
+        await updateDoc(petWeightss, {
+          requestRfid: true,
+          Rfid:"", 
+          Token:0,
+        }).then(async()=>{
+          setLoad3(true);
+          await  addDoc(collection(db, "Task"), {
+          type:'request_rfid',
+          deviceName:DeviceName.trim(),
+          document_id:id,
+          request:slot,
+        });
+        })
+  
+    }
 
 
-    handleFakeWeight = async () => {
+  const handleFakeWeight = async () => {
       setLoad2(true);
       setW("");
       const petWeightss = doc(db, "List_of_Pets", id);
@@ -391,7 +419,7 @@ if (selectedEnd !== undefined) {
           type:'request_weight',
           deviceName:DeviceName.trim(),
           document_id:id,
-          request:null,
+          request:slot,
         });
         })
   
@@ -509,11 +537,11 @@ if (selectedEnd !== undefined) {
 
   const { control } = useForm();
 
-  if(loads){
-    return (
-      <PurrfectPlateLoadingScreen message={"Please wait.."} fontSize={25} />
-    )
-  }
+  // if(loads){
+  //   return (
+  //     <PurrfectPlateLoadingScreen message={"Please wait.."} fontSize={25} />
+  //   )
+  // }
 
   
   
@@ -527,7 +555,7 @@ if (selectedEnd !== undefined) {
         <View style={{
             height:'100%',
             width:'100%',
-            padding:20,
+            padding:15,
         }} >
         <View style={{
             flexDirection:'row',
@@ -555,9 +583,9 @@ if (selectedEnd !== undefined) {
         </View>
         <View>
         <Text style={{
-            fontSize:20,
+            fontSize:15,
             opacity:0.5,
-            marginLeft:7,
+            marginLeft:10,
         }}>Hi Im,</Text>
         <View style={{
           flexDirection:'row',
@@ -566,7 +594,7 @@ if (selectedEnd !== undefined) {
           gap:5,
         }}>
         <Text style={{
-            fontSize:35,
+            fontSize:30,
             fontWeight:'bold',
             opacity:0.7,
             textTransform:'capitalize'
@@ -599,8 +627,56 @@ if (selectedEnd !== undefined) {
         </View>
         <View style={{
           gap:5,
-          marginTop:20,
+          marginTop:10,
         }}>
+    <View style={{
+      position:'relative'
+    }}>
+    <TextInput
+      label="Rfid"
+      mode='outlined'
+      activeOutlineColor='coral'
+      value={`${rfid}`}
+      disabled
+      onChangeText={(val)=> setRFID(val) }
+      
+    />
+    <TouchableOpacity style={{
+      position:'absolute',
+      right:7,
+      fontWeight:'bold',
+      top:-2,
+      backgroundColor:'white',
+      elevation:2,
+      borderRadius:5,
+      color:'red',
+      opacity:0.9,
+      gap:5,
+      paddingHorizontal:10,
+      paddingVertical:5,
+    }} onPress={handleFakeRfid}>
+     {loadingRf ? (
+      <Text style={{
+        color:'red',
+        opacity:0.9,
+        fontWeight:'bold',
+        flexDirection:'row',
+        justifyContent: 'center',
+        alignItems:'center',
+        gap:5,
+      }}>Please wait..</Text>
+     ): (
+      <Text style={{
+        color:'red',
+        opacity:0.9,
+        fontWeight:'bold'
+      }}><AntDesign name="edit" size={15} color="red" /> CHANGE RFID</Text>
+     )}
+
+    </TouchableOpacity>
+  
+    </View>
+  
       <TextInput
       label="PetName"
       mode='outlined'
@@ -868,10 +944,37 @@ if (selectedEnd !== undefined) {
       disabled
     />
     <View style={{
+     
+      gap:2,
+      justifyContent:'space-between',
+      flexDirection:'row-reverse',
+      marginTop:5,
+      marginBottom:10,
+      paddingHorizontal:10,
+    }}>
+     <TouchableOpacity
+        style={{
+          alignSelf:'center',
+          flexDirection:'row',
+          justifyContent:'center',
+          gap:5,
+        }}
+        onPress = {()=> {
+          navigation.goBack();
+        }}
+        >
+         
+        <Text style={{
+          fontWeight:'bold',
+          opacity:0.6,
+          color:'red'
+        }}>GO BACK TO HOME</Text>
+        </TouchableOpacity>
+    <View style={{
       flexDirection:'row',
-            alignSelf:'center',
-            gap:2,
-            marginTop:10,
+      justifyContent:'center',
+      alignItems:'center',
+      gap:5,
     }}>
     <Text style={{
       fontWeight:'bold',
@@ -890,17 +993,15 @@ if (selectedEnd !== undefined) {
       opacity:0.7
     }}>Click here</Text>
     </TouchableOpacity>
+      </View> 
+   
    
     </View>
 
 
   
         </View>
-        <View style={{
-          borderWidth:1,
-          marginVertical:10,
-          opacity:0.5,
-        }}></View>
+     
         <View style={{
           flexDirection:'row',
           alignSelf:'center',
@@ -945,24 +1046,7 @@ if (selectedEnd !== undefined) {
           }}>UPDATE</Text>
         </TouchableOpacity>
         </View>
-        <TouchableOpacity
-        style={{
-          marginTop:20,
-          alignSelf:'center',
-          flexDirection:'row',
-          justifyContent:'center',
-          gap:5,
-        }}
-        onPress = {()=> {
-          navigation.goBack();
-        }}
-        >
-          <FontAwesome name="home" size={16} color="black" />
-        <Text style={{
-          fontWeight:'bold',
-          opacity:0.6,
-        }}>GO BACK TO HOME</Text>
-        </TouchableOpacity>
+        
         </View>
 
         <Modal isVisible={visible3} animationIn='slideInLeft' animationOut='fadeOut'>

@@ -20,6 +20,7 @@ import ListPet from './components/ListPet';
 import PurrfectPlateLoadingScreen from './components/PurrfectPlateLoadingScreen';
 import {useForm, Controller, set} from 'react-hook-form';
 import DropDownPicker from "react-native-dropdown-picker";
+import NotifComponent from './components/NotifComponent';
 
 
 
@@ -27,29 +28,6 @@ import DropDownPicker from "react-native-dropdown-picker";
 const db = getFirestore(app);
 const auth = getAuth(app);
 
-const petNotification = [
-    {
-        image: 'https://images.hindustantimes.com/img/2022/02/10/550x309/dog_thumb_1644498337052_1644498346070.jpg',
-        name:'Puppy',
-        weight:'100kg',
-        message:'is over weight please do something about it',
-        date:'Yesterday 150 hours ago',
-    },
-    {
-        image: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTqR4Yu6ha1FRU3v5YSyqtgKOKs1zsV_j_ssxZOQu7hAkRoUF2TZ0Q3YwZqjMzXcfZpqNk&usqp=CAU',
-        name:'Saddy',
-        weight:'50kg',
-        message:'is over weight please do something about it',
-        date:'Today 15 mins. ago',
-    },
-    {
-        image: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRmiy9Y2-1yqILJ2wQO-5esy9mBqOK-ZkUrGA&usqp=CAU',
-        name:'Pitty',
-        weight:'120kg',
-        message:'is over weight please do something about it',
-        date:'1 hour ago',
-    }
-]
 
 
 const DashBoard = ({navigation,route: {params: { credentials }}}) => {
@@ -68,19 +46,18 @@ const DashBoard = ({navigation,route: {params: { credentials }}}) => {
     { label: "", value: "" },
   ]);
 
-  
+
+  const [showNotif, setShowNotif] = useState(false)
   const [notif, setNotifications] = useState([]);
   
   useEffect(() => {
     
-     AsyncStorage.getItem("Credentials").then((user)=>{
-      const datas = JSON.parse(user);
+   
     
-      if (datas) {
+
         const q = query(
           collection(db, "notifications"),
-          where("deviceName", "==", datas.DeviceName.trim()),
-          where("type", "==", "User"),
+          where("deviceName", "==", credentials.DeviceName.trim()),
           orderBy("createdAt", "desc")
         );
        
@@ -91,7 +68,7 @@ const DashBoard = ({navigation,route: {params: { credentials }}}) => {
               const type = doc.data().type;
               const petName = doc.data().pet_name;
               const createdAt = doc.data().createdAt.toDate(); 
-            
+             
               if (type === "Admin") {
              
         
@@ -111,7 +88,7 @@ const DashBoard = ({navigation,route: {params: { credentials }}}) => {
                     });
                     notificationsData.sort((a, b) => b.createdAt - a.createdAt);
                     setNotifications([...notificationsData]); // Update state with new data
-        
+                    
                     // Save data in localStorage
                    AsyncStorage.setItem("notifications", JSON.stringify(notificationsData));
                   });
@@ -121,8 +98,8 @@ const DashBoard = ({navigation,route: {params: { credentials }}}) => {
              if(type === "User"){
               const listOfPetsQuery = query(
                 collection(db, "List_of_Pets"),
-                where("DeviceName", "==", datas.DeviceName.trim()),
-                where("Petname", "==", petName)
+                where("DeviceName", "==", credentials.DeviceName.trim()),
+                where("Petname", "==", petName || null)
               );
         
               const petUnsubscribe = onSnapshot(listOfPetsQuery, (petsQuerySnapshot) => {
@@ -152,13 +129,14 @@ const DashBoard = ({navigation,route: {params: { credentials }}}) => {
 
         
         
-      }
-   
-     });
-     
+
+  
     
       
     }, []);
+
+
+ 
 
     useEffect(() => {
       AsyncStorage.getItem("notifications").then((storedNotifications)=>{
@@ -213,7 +191,7 @@ const DashBoard = ({navigation,route: {params: { credentials }}}) => {
       const user = await AsyncStorage.getItem("Credentials");
       const datas = JSON.parse(user);
       if(user){
-        const q = query(collection(db, "List_of_Pets"), where("DeviceName", "==", datas.DeviceName.trim()));
+        const q = query(collection(db, "List_of_Pets"), where("DeviceName", "==", datas?.DeviceName.trim()));
         onSnapshot(q, (querySnapshot) => {
        const data = [];
        querySnapshot.forEach((docs) => {
@@ -249,7 +227,7 @@ const DashBoard = ({navigation,route: {params: { credentials }}}) => {
     if(search.length === 0){
       
       if(Gender === "all"){
-        const q = query(collection(db, "List_of_Pets"), where("DeviceName", "==", credentials.DeviceName.trim()), orderBy("Created_at", "desc"));
+        const q = query(collection(db, "List_of_Pets"), where("DeviceName", "==", credentials.DeviceName?.trim()), orderBy("Created_at", "desc"));
         onSnapshot(q, (querySnapshot) => {
        const data = [];
        querySnapshot.forEach((docs) => {
@@ -262,7 +240,7 @@ const DashBoard = ({navigation,route: {params: { credentials }}}) => {
         return;
       }
 
-      const q = query(collection(db, "List_of_Pets"), where("DeviceName", "==", credentials.DeviceName.trim()),where("petType", "==", Gender.trim()) , orderBy("Created_at", "desc"));
+      const q = query(collection(db, "List_of_Pets"), where("DeviceName", "==", credentials.DeviceName?.trim()),where("petType", "==", Gender.trim()) , orderBy("Created_at", "desc"));
       onSnapshot(q, (querySnapshot) => {
      const data = [];
      querySnapshot.forEach((docs) => {
@@ -323,11 +301,11 @@ const DashBoard = ({navigation,route: {params: { credentials }}}) => {
  
 
 
-  if(loading){
-    return (
-      <PurrfectPlateLoadingScreen message={"WELCOME TO PURRFECT PLATE"} fontSize={20} />
-    )
-  }
+  // if(loading){
+  //   return (
+  //     <PurrfectPlateLoadingScreen message={"WELCOME TO PURRFECT PLATE"} fontSize={20} />
+  //   )
+  // }
 
 
 
@@ -652,10 +630,10 @@ const DashBoard = ({navigation,route: {params: { credentials }}}) => {
       }}>
         Notification
       </Text>
-      <TouchableOpacity >
+      <TouchableOpacity onPress={()=> setShowNotif(true)}>
       <Text style={{
         opacity:0.5
-      }}>See all</Text>
+      }} >See all</Text>
       </TouchableOpacity>
   
     </View>
@@ -825,7 +803,7 @@ const DashBoard = ({navigation,route: {params: { credentials }}}) => {
             color:'coral',
             fontSize:25,
             fontWeight:'bold'
-          }}>|</Text> List of Pets</Text>
+          }}>|</Text> List of Notification</Text>
           <TouchableOpacity onPress={()=> setVisible(false)}>
           <AntDesign name="close" size={24} color="red" />    
           </TouchableOpacity>
@@ -842,6 +820,49 @@ const DashBoard = ({navigation,route: {params: { credentials }}}) => {
             justifyContent:'space-between',
             alignItems:'center',
             gap:5
+        }}
+      />
+        </View>
+       </Modal>
+
+       <Modal isVisible={showNotif} animationIn='slideInLeft' animationOut='fadeOut'>
+        <View style={{
+          flex:1,
+          backgroundColor:'white',
+          padding:10,
+        }}>
+          <View style={{
+            flexDirection:'row',
+            justifyContent:'space-between',
+            alignItems:'center',
+            padding:5,
+          }}>
+          <Text style={{
+            fontSize:22,
+            fontWeight:'bold',
+            opacity:0.7
+          }}><Text style={{
+            color:'coral',
+            fontSize:25,
+            fontWeight:'bold'
+          }}>|</Text> List of Notifications</Text>
+          <TouchableOpacity onPress={()=> setShowNotif(false)}>
+          <AntDesign name="close" size={24} color="red" />    
+          </TouchableOpacity>
+          </View>
+          <FlatList
+        data={notif}
+        renderItem={({item})=> {
+           return (
+            <NotifComponent {...item} navigation={navigation} setVisible={setVisible}/>
+           )
+        }}
+        numColumns={1}
+        contentContainerStyle={{
+            justifyContent:'space-between',
+            alignItems:'center',
+            gap:5,
+            paddingBottom:10,
         }}
       />
         </View>
