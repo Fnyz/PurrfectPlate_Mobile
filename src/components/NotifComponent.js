@@ -2,18 +2,26 @@ import { View, Text, TouchableOpacity } from 'react-native'
 import React from 'react'
 import { Image } from 'expo-image';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Entypo } from '@expo/vector-icons';
 import moment from 'moment/moment';
+import { ALERT_TYPE, Dialog } from 'react-native-alert-notification';
+import app from '../firebase';
+import { deleteDoc, getFirestore, doc } from 'firebase/firestore';
+
+const db = getFirestore(app);
 const NotifComponent = ({ 
     name,
     weight,
     message,
     image,
     createdAt,
+    id,
 }) => {
 
   const formattedDate = moment(createdAt).calendar();
-
+  
   return (
+    
     <View style={{
         borderRadius:2,
         paddingVertical:13,
@@ -45,10 +53,16 @@ const NotifComponent = ({
       <View>
         <View style={{
             flexDirection:'row',
+            justifyContent:'space-between',
+            alignItems:'center'
+        }}>
+          <View style={{
+            flexDirection:'row',
             alignItems:'center',
             gap:5,
+            width:170,
         }}>
-        <Text style={{
+          <Text style={{
             color:'red',
             fontWeight:'bold',
             fontSize:20,
@@ -60,6 +74,22 @@ const NotifComponent = ({
         fontWeight:'bold',
         opacity:0.5
       }} >{formattedDate}</Text>
+          </View>
+      <TouchableOpacity style={{
+       marginLeft:10,
+       opacity:0.6
+      }} onPress={async()=>{
+        await deleteDoc(doc(db, "notifications",id)).then(()=>{
+          Dialog.show({
+            type: ALERT_TYPE.DANGER,
+            title: 'Success!',
+            textBody: "Notification is remove successfully!",
+            button: 'close',
+          })
+        });
+      }}>
+      <Entypo name="trash" size={17} color="red" />
+      </TouchableOpacity>
         </View>
         {weight && (
             <Text>Weight: {parseFloat(weight).toFixed(2)}</Text>

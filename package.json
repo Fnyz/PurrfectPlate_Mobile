@@ -55,7 +55,9 @@
     "react-native-webview": "13.2.2",
     "react-native-wifi-reborn": "^4.8.3",
     "react-native-youtube-iframe": "^2.3.0",
-    "youtube-api-v3-search": "^1.2.1"
+    "youtube-api-v3-search": "^1.2.1",
+    "expo-notifications": "~0.20.1",
+    "expo-constants": "~14.4.2"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0"

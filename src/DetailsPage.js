@@ -6,7 +6,7 @@ import { TextInput } from 'react-native-paper';
 import { Entypo , MaterialIcons, FontAwesome5, EvilIcons, FontAwesome } from '@expo/vector-icons';
 import { AntDesign } from '@expo/vector-icons';
 import { MaterialCommunityIcons, Fontisto } from '@expo/vector-icons';
-import { doc, updateDoc, getFirestore,  deleteDoc,  collection, query, where, onSnapshot} from "firebase/firestore";
+import { doc, updateDoc, getFirestore,  deleteDoc,  collection, query, where, onSnapshot, addDoc} from "firebase/firestore";
 import app from './firebase';
 import Modal from "react-native-modal";
 import { ALERT_TYPE, Dialog, AlertNotificationRoot } from 'react-native-alert-notification';
@@ -19,6 +19,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
 import { petsData } from '../animeData';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { Audio } from 'expo-av';
+import * as FileSystem from 'expo-file-system';
+import { deviceName } from 'expo-device';
 
 const db = getFirestore(app);
 
@@ -155,6 +158,11 @@ const Box = React.memo(({Cat, Dog, image, handleCloseModal, pickImage, handlePic
 
 const DetailsPage = ({route, navigation}) => {
   const {image, Weight, Gender, Age, Petname, date, DeviceName, id, GoalWeight, StartGoalMonth, EndGoalMonth, Slot, Rfid} = route.params;
+  const [recording, setRecording] = React.useState();
+  const [recordsound, setSound] = React.useState("");
+  const [play, setPlay] = React.useState(false)
+  const [needRec, setNeedRec] = React.useState(false)
+  const [petRecord, setPetRecord] = React.useState("");
   const [visible2, setVisible2] = useState(false)
   const [rfid, setRFID] = useState("")
   const [catData, setCatData] = useState([]);
@@ -163,6 +171,7 @@ const DetailsPage = ({route, navigation}) => {
   const [date2, setDate2] = useState(false)
   const[click, setClick] = useState(false);
   const [loads, setloads] = useState(false)
+  const [datas1, setAllData] = useState([]);
   const [w, setW] = useState(null);
   const [a, setA] = useState(null);
   const [n, setN] = useState(null);
@@ -195,41 +204,189 @@ const DetailsPage = ({route, navigation}) => {
   const [loadingRf, setLoad3] = useState(false);
   const [petSchesData, setPetSchedDataset] = useState([]);
 
-
-  useEffect(()=> {
-    const makeChange = async () => {
-      const user = await AsyncStorage.getItem("Credentials")
-      if(user){
-          const datas = JSON.parse(user);
-          const q = query(collection(db, "List_of_Pets"), where("DeviceName", "==", datas.DeviceName));
-          onSnapshot(q, (snapshot) => {
-          snapshot.docChanges().forEach( async(change) => {
-           if (change.doc.data().Weight && change.doc.data().Petname === Petname && change.doc.data().Token === 0) {
-            setW(change.doc.data().Weight)
-            setLoad2(false)
-          
-            return;
-          }
-
-          if (change.doc.data().Rfid && change.doc.data().Petname === Petname && change.doc.data().Token === 0) {
-            setRFID(change.doc.data().Rfid)
-            setLoad3(false)
-            return;
-          }
-      
-      
-  
-        });
-      
+  async function startRecording() {
+    setSound('');
+    try {
+      console.log('Requesting permissions..');
+      await Audio.requestPermissionsAsync();
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
       });
-  
-  
+
+      console.log('Starting recording..');
+      const { recording } = await Audio.Recording.createAsync( Audio.RecordingOptionsPresets.HIGH_QUALITY
+      );
+     
+      setRecording(recording);
+      console.log('Recording started');
+    } catch (err) { 
+      console.error('Failed to start recording', err);
+    }
+  }
+
+
+  const getAllDatas = () => {
+    const q = query(collection(db, "List_of_Pets"));
+   onSnapshot(q, (querySnapshot) => {
+  const dt = [];
+  querySnapshot.forEach((doc) => {
+      dt.push(doc.data());
+  });
+
+  setAllData(dt);
+ 
+});
+
+  }
+
+  useEffect(()=>{
+    getAllDatas();
+  },[])
+
+  async function stopRecording() {
+    console.log('Stopping recording..');
+    setRecording(undefined);
+    await recording.stopAndUnloadAsync();
+    await Audio.setAudioModeAsync(
+      {
+        allowsRecordingIOS: false,
       }
+    );
+    const uri = recording.getURI();
+    console.log('Recording stopped and stored at', uri);
+    setSound(uri)
+  
+   
+
+    try {
+      const audioURI = recording.getURI();
+  
+      // Read the MP3 file
+      const fileContent = await FileSystem.readAsStringAsync(audioURI, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+      setPetRecord(fileContent);
+      // Set the Base64 representation of the MP3 file to state
+    
+    } catch (error) {
+      console.error('Error converting MP3 to Base64:', error);
     }
 
-    makeChange();
+
+
+ 
+    
+  }
+
+
+
+
+
+  async function playRecording() {
+    try {
+      const { sound, status } = await Audio.Sound.createAsync(
+        { uri: recordsound },
+        { shouldPlay: true, isLooping: false },
+        onPlaybackStatusUpdate
+      );
+      
+      console.log('Playing recorded sound');
+      setPlay(true);
+    } catch (error) {
+      console.error('Error playing recorded sound', error);
+    }
+  }
+
+  function onPlaybackStatusUpdate(status) {
+    if (status.didJustFinish) {
+      // The playback has finished
+      setPlay(false);
    
-},[loadingWth])
+      console.log('Playback finished');
+   
+    }
+  }
+  
+
+
+
+useEffect(()=> {
+  const makeChange = async () => {
+    const user = await AsyncStorage.getItem("Credentials")
+    if(user){
+        const datas = JSON.parse(user);
+        const q = query(collection(db, "List_of_Pets"), where("DeviceName", "==", datas.DeviceName));
+        onSnapshot(q, (snapshot) => {
+        snapshot.docChanges().forEach((change) => {
+         if (change.type === "modified" && change.doc.data().Weight && change.doc.data().Token === 0) {
+          setW(change.doc.data().Weight)
+          setLoad2(false)
+          return;
+        }
+
+      });
+    
+    });
+
+
+    }
+  }
+
+  makeChange();
+ 
+},[loadingWth, Weight])
+
+useEffect(()=> {
+const makeChange = async () => {
+  const user = await AsyncStorage.getItem("Credentials")
+  if(user){
+      const datas = JSON.parse(user);
+      const q = query(collection(db, "List_of_Pets"), where("DeviceName", "==", datas.DeviceName));
+      onSnapshot(q, (snapshot) => {
+      snapshot.docChanges().forEach((change) => {
+
+      if (change.type === "modified" && change.doc.data().Rfid && change.doc.data().Token === 0) {
+      
+        console.log("haschange");
+        const a = datas1.find(d => d?.Rfid == change.doc.data().Rfid && d.Petname.trim() !== change.doc.data().Petname.trim());      
+        if(!a){
+        
+          setRFID(change.doc.data().Rfid)
+          setLoad3(false)
+          return;
+        }
+        
+
+         
+      
+            setRFID("")
+            setLoad3(false)
+            Dialog.show({
+              type: ALERT_TYPE.DANGER,
+              title: 'Warning',
+              textBody: `RFID is already taken on pet ${a?.Petname}; please try to generate a new RFID.`,
+              button: 'close',
+            })
+          
+        return;
+      }
+
+    });
+  
+  });
+
+
+  }
+}
+
+makeChange();
+
+},[loadingRf, Rfid])
+
+
+
+
 
   useEffect(()=>{
     setloads(true);
@@ -475,23 +632,53 @@ if (selectedEnd !== undefined) {
       StartGoalMonth:val === null ? "Invalid Date":val,
       EndGoalMonth:val1 === null ? "Invalid Date": val1,
     }
-    try {
-      const collects = doc(db, "List_of_Pets", id);
-      await updateDoc(collects, docUpdate);
-      setVisible(false)
-      setChange(false)
-      Dialog.show({
-        type: ALERT_TYPE.SUCCESS,
-        title: 'SUCCESS',
-        textBody: 'Pet info is Updated Successfully.',
-        button: 'close',
-      })
-      setTimeout(() => {
-        navigation.goBack();
-      }, 3000);
-    } catch (error) {
-      console.log(error)
+
+    const res = datas1.find(d => d.Petname.toLowerCase().trim() === n.toLowerCase().trim() && d?.DeviceName.toLowerCase().trim() === DeviceName.toLowerCase().trim());
+
+    const updateFunc = async () => {
+      try {
+            const collects = doc(db, "List_of_Pets", id);
+            await updateDoc(collects, docUpdate);
+            setVisible(false)
+            setChange(false)
+            Dialog.show({
+              type: ALERT_TYPE.SUCCESS,
+              title: 'SUCCESS',
+              textBody: 'Pet info is Updated Successfully.',
+              button: 'close',
+            })
+            setTimeout(() => {
+              navigation.goBack();
+            }, 3000);
+          } catch (error) {
+            console.log(error)
+          }
+         
     }
+    if (res) {
+      // Pet with the specified name and device name already exists
+      if (n === Petname) {
+        updateFunc();
+      } else if (n !== Petname && res.Petname === Petname) {
+        updateFunc();
+      } else {
+        setVisible(false);
+        Dialog.show({
+                type: ALERT_TYPE.DANGER,
+                title: 'Warning',
+                textBody: 'Petname is already exist, please try another one!',
+                button: 'close',
+              })
+              
+      }
+    } else {
+      // Pet does not exist
+      updateFunc();
+    }
+    
+     
+
+   
   }
 
 
@@ -537,11 +724,11 @@ if (selectedEnd !== undefined) {
 
   const { control } = useForm();
 
-  // if(loads){
-  //   return (
-  //     <PurrfectPlateLoadingScreen message={"Please wait.."} fontSize={25} />
-  //   )
-  // }
+  if(loads){
+    return (
+      <PurrfectPlateLoadingScreen message={"Please wait.."} fontSize={25} />
+    )
+  }
 
   
   
@@ -571,8 +758,8 @@ if (selectedEnd !== undefined) {
         }}>
         <Image
         style={{
-          width:110,
-          height:110,
+          width:105,
+          height:105,
           opacity:0.9,
           borderRadius:100,
         }}
@@ -589,7 +776,7 @@ if (selectedEnd !== undefined) {
         }}>Hi Im,</Text>
         <View style={{
           flexDirection:'row',
-          justifyContent:'center',
+          marginLeft:10,
           alignItems:'center',
           gap:5,
         }}>
@@ -601,6 +788,13 @@ if (selectedEnd !== undefined) {
         }}>{n}</Text>
         <MaterialCommunityIcons name="hand-wave" size={27} color="coral" />
         </View>
+        <View style={{
+          flexDirection:'row',
+          alignItems:'center',
+          justifyContent:'space-between',
+          width:'70%',
+          marginTop:5,
+        }}>
         <TouchableOpacity style={{
       
           height:35,
@@ -623,6 +817,18 @@ if (selectedEnd !== undefined) {
             fontSize:12,
           }}>CHOOSE IMAGE</Text>
         </TouchableOpacity>
+        <Text style={{
+          fontSize:20,
+          fontWeight:'bold'
+        }}>/</Text>
+        <TouchableOpacity style={{
+          opacity:0.7,
+        }}  onPress = {()=> {
+          navigation.goBack();
+        }}>
+        <FontAwesome5 name="home" size={24} color="black" />
+        </TouchableOpacity>
+        </View>
         </View>
         </View>
         <View style={{
@@ -943,36 +1149,34 @@ if (selectedEnd !== undefined) {
       value={moment(date).calendar()}
       disabled
     />
-    <View style={{
-     
-      gap:2,
-      justifyContent:'space-between',
-      flexDirection:'row-reverse',
+      <View style={{
+      flexDirection:'row',
+      alignItems:'center',
+      gap:5,
       marginTop:5,
-      marginBottom:10,
-      paddingHorizontal:10,
+      marginLeft:10,
     }}>
-     <TouchableOpacity
-        style={{
-          alignSelf:'center',
-          flexDirection:'row',
-          justifyContent:'center',
-          gap:5,
-        }}
-        onPress = {()=> {
-          navigation.goBack();
-        }}
-        >
-         
-        <Text style={{
-          fontWeight:'bold',
-          opacity:0.6,
-          color:'red'
-        }}>GO BACK TO HOME</Text>
-        </TouchableOpacity>
+    <Text style={{
+      fontWeight:'bold',
+      opacity:0.5
+    }}>Record voice on how you call your pet.</Text>
+    <TouchableOpacity onPress={()=> setNeedRec(true)}>
+    <Text style={{
+      color:'red',
+      fontWeight:'bold',
+      fontStyle:'italic',
+      opacity:0.8
+    }}>Click here</Text>
+    </TouchableOpacity>
+    </View>
+    <View style={{
+      gap:2,
+      paddingHorizontal:10,
+      marginBottom:5,
+    }}>
+  
     <View style={{
       flexDirection:'row',
-      justifyContent:'center',
       alignItems:'center',
       gap:5,
     }}>
@@ -997,9 +1201,6 @@ if (selectedEnd !== undefined) {
    
    
     </View>
-
-
-  
         </View>
      
         <View style={{
@@ -1314,6 +1515,112 @@ if (selectedEnd !== undefined) {
         
         </View>
       </Modal>
+
+      
+      <Modal isVisible={needRec} animationIn='slideInLeft' animationOut='fadeOut'>
+       <View style={{
+        width:'100%',
+        borderRadius:10,
+        height:recordsound ? 230 : 130,
+        backgroundColor:'white',
+        padding:10,
+        flexDirection:'column',
+        gap:15,
+       }}>
+        <View>
+          <View style={{
+            flexDirection:'row',
+            justifyContent:'space-between',
+            alignItems: 'center',
+          }}>
+          <Text style={{
+          fontSize:20,
+          fontWeight:'bold',
+        }}>Add Recording</Text>
+        <TouchableOpacity onPress={()=>{
+setNeedRec(false);
+
+}}>
+        <AntDesign name="close" size={20} color="red" />
+        </TouchableOpacity>
+          </View>
+      
+        <Text style={{
+          opacity:0.5
+        }}>Click the button below to start recording.</Text>
+        </View>
+      
+        <TouchableOpacity style={{
+          width:'100%',
+          paddingVertical:12,
+          backgroundColor:'#FAB1A0',
+          alignItems:'center',
+          borderRadius:5,
+          justifyContent:'center',
+          flexDirection:'row',
+          gap:10
+        }} disabled={play ? true: false}  onPress={recording ? stopRecording : startRecording}>
+          {recording ? <>
+            <FontAwesome name="pause" size={17} color="white" />
+          <Text style={{
+            fontSize:20,
+            fontWeight:'bold',
+            color:'white'
+          }}>Stop Recording</Text>
+          </>: <>
+          <Entypo name="controller-record" size={17} color="white" />
+          <Text style={{
+            fontSize:20,
+            fontWeight:'bold',
+            color:'white'
+          }}>Start Recording</Text>
+          </>}
+        </TouchableOpacity>
+        {recordsound && (
+          <>
+           <Text style={{
+          fontWeight:'bold',
+          opacity:0.5
+        }}>Listen your recording here:</Text>
+        <TouchableOpacity style={{
+          width:'100%',
+          paddingVertical:12,
+          borderWidth:1,
+          borderColor:'#FAB1A0',
+          alignItems:'center',
+          borderRadius:5,
+          justifyContent:'center',
+          flexDirection:'row',
+          gap:10
+        }} disabled={play ? true: false}   onPress={playRecording}>
+          {play ? <>
+            <ActivityIndicator animating={true} color='#FAB1A0' size={20} />
+          <Text style={{
+            fontSize:20,
+            fontWeight:'bold',
+            color:'#FAB1A0'
+          }}> Sound Playing...</Text>
+          </>: <>
+          <FontAwesome name="play" size={17} color="#FAB1A0" />
+          <Text style={{
+            fontSize:20,
+            fontWeight:'bold',
+            color:'#FAB1A0'
+          }}>Play Recording</Text>
+          </>}
+        </TouchableOpacity>
+          </>
+
+        )}
+       
+
+        <View>
+    
+    </View>
+  
+
+       </View>
+       </Modal>
 
 
 

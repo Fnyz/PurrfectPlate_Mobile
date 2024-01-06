@@ -29,6 +29,7 @@ const ConnectDevice = ({navigation, route : {params}}) => {
   const [show, setShow] = useState(false);
   const [listUser, setUserList] = useState([]);
   const [click, setClick] = useState(false);
+  const [click1, setClick1] = useState(false);
   const [visible, setVisible] = useState(false);
 
 
@@ -221,7 +222,7 @@ var hashPass = CryptoJS.SHA256(password, '').toString();
    }
 
    const handleNewDevice = async () => {
-    setClick(true);
+    setClick1(true);
     const res = deviceList.find(d => d.data.Token === 0);
 
     if(!res){
@@ -231,7 +232,7 @@ var hashPass = CryptoJS.SHA256(password, '').toString();
         textBody: 'No device available, contact the administrator!.',
         button: 'close',
       })
-     setClick(false)
+     setClick1(false)
      return;
     }
    
@@ -241,7 +242,6 @@ await updateDoc(devicess, {
 Email: email.trim(),
 Token:1,
 }).then(async()=>{
-
 const q = query(collection(db, "users"), where("email", "==", email.trim()));
 const querySnapshot = await getDocs(q);
 querySnapshot.forEach(async (docss) => {
@@ -251,7 +251,8 @@ await updateDoc(devicesss, {
   hasDevice: true,
   Devicename:res.data.DeviceName,
 }).then(()=> {
-  setClick(false);
+  setShow(false);
+  setClick1(false);
   setDeviceName(res.data.DeviceName);
   setVisible(false)
 })
@@ -471,7 +472,7 @@ marginTop:10,
               marginTop:10,
               gap:10,
               }} onPress={handleNewDevice}>
-              {click &&   <ActivityIndicator animating={true} color='white' size={24} style={{
+              {click1 &&   <ActivityIndicator animating={true} color='white' size={24} style={{
                     position:'relative',
                     left:0,
                 }}/>}
@@ -481,7 +482,7 @@ marginTop:10,
                 fontSize:15,
                 fontWeight:'bold'
               }} 
-              >{click ? 'PLEASE WAIT...': 'SUBMIT'}</Text>
+              >{click1 ? 'PLEASE WAIT...': 'SUBMIT'}</Text>
               </TouchableOpacity>
              </View>
         </View>

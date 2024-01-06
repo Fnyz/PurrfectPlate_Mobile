@@ -4,7 +4,7 @@ import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import moment from 'moment';
-const NotificationList = ({image, name, message, weight, navigation, createdAt}) => {
+const NotificationList = ({image, name, message, weight, navigation, createdAt, hasSeen, id}) => {
     
   return (
     <>
@@ -17,6 +17,7 @@ const NotificationList = ({image, name, message, weight, navigation, createdAt})
         marginVertical:10,
     }}
     >
+      
       <View style={{
      
         borderRadius:50,

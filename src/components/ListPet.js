@@ -5,7 +5,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import moment from 'moment/moment';
 const ListPet = ({navigation, dt, id, setVisible}) => {
 
-  const {image,Petname, Weight, Gender, Age, DeviceName, GoalWeight, Created_at} = dt
+  const {image,Petname, Weight, Gender, Age, DeviceName, GoalWeight, Created_at, Slot, petType, StartGoalMonth, EndGoalMonth, Rfid} = dt
   const formattedDate = moment(Created_at).calendar();
 
   return (
@@ -60,9 +60,9 @@ const ListPet = ({navigation, dt, id, setVisible}) => {
         alignItems:'center',
         opacity:0.7,
 
-      }} onPress={()=>
+      }}onPress={()=>
         {
-            navigation.navigate('DetailsPage',{
+          navigation.navigate('DetailsPage',{
             image,
             Weight,
             Gender,
@@ -70,11 +70,14 @@ const ListPet = ({navigation, dt, id, setVisible}) => {
             Petname,
             DeviceName,
             GoalWeight,
-            date:'Today at 5 hours ago.',
+            date:Created_at,
+            StartGoalMonth,
+            EndGoalMonth,
+            Slot,
+            Rfid,
             id:id
           })
           setVisible(false);
-            
         }
       }>
       <MaterialCommunityIcons name="view-list" size={45} color="white" />

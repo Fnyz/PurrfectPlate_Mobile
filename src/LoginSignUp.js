@@ -256,13 +256,7 @@ const LoginSignUp = ({route, navigation}) => {
         signInWithEmailAndPassword(auth, email, password)
   .then(async(userCredential) => {
 
-
-
- 
-    
       const user = userCredential.user;
-
-           
       if(!user.emailVerified){
       
         setVisible(false)
@@ -270,15 +264,29 @@ const LoginSignUp = ({route, navigation}) => {
         return;
       }
 
-
-      const res = deviceList.find(d => d.data.Email === user.email);
-
+      const res = deviceList.find(d => d.data.Email === user.email && d.data.registered === true);
       if(!res){
+
+       
+        const a = listUser.find(d => d.data.isAdmin === true && d.data.email === email);
+        
+        if(a){
+          Dialog.show({
+            type: ALERT_TYPE.DANGER,
+            title: 'Oppps.',
+            textBody: 'This is an admin account and you are not allowed to access this account!',
+            button: 'close',
+          })
+          setVisible(false);
+          setEmail('')
+          setPassword('');
+          return;
+        }
+
         const profile = {
           email: user.email,
           id: user.uid,
           deviceId: deviceId,
-         
         }
         setVisible(false);
         setEmail('')
@@ -288,6 +296,8 @@ const LoginSignUp = ({route, navigation}) => {
         return;
       }
 
+  
+      
       const credentials = {
         DeviceName: res.data.DeviceName.trim(),
         password: res.data.Password.trim(),
@@ -296,6 +306,7 @@ const LoginSignUp = ({route, navigation}) => {
       }
      
       const a = listUser.find(d => d.data.email === res.data.Email);
+
       if(!a) return;
       const devicesss = doc(db, "users", a.id);
       await updateDoc(devicesss, {

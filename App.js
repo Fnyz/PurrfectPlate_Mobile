@@ -19,7 +19,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import Reports from './src/Reports';
 import ProfileUpdate from './src/ProfileUpdate';
 import UpdatePassword from './src/UpdatePassword';
-import { TimerProvider } from './src/TimeContext';
+import { TimerProvider } from './src/GlobalContext';
 
 
 
@@ -114,25 +114,23 @@ function NavDrawer() {
   )
 }
 
-const AppStack = () => {
-  return (
-    <TimerProvider>
-      <Stack.Navigator  
+const AppStack = () => (
+  <TimerProvider>
+    <Stack.Navigator
       screenOptions={{
-      headerShown: false
-   }}>
-        <Stack.Screen name="FrontPage" component={FrontPage} />
-        <Stack.Screen name="LoginSignUp" component={LoginSignUp} />
-        <Stack.Screen name="ForgetPassword" component={ForgetPassword} />
-        <Stack.Screen name="DetailsPage" component={DetailsPage} />
-        <Stack.Screen name="Homepage" component={NavDrawer} />
-        <Stack.Screen name="ConnectDevice" component={ConnectDevice} />
-        <Stack.Screen name="UpdateProfile" component={ProfileUpdate} />
-        <Stack.Screen name="UpdatePassword" component={UpdatePassword} />
-      </Stack.Navigator>
-      </TimerProvider>
-  );
-};
+        headerShown: false
+      }}>
+      <Stack.Screen name="FrontPage" component={FrontPage} />
+      <Stack.Screen name="LoginSignUp" component={LoginSignUp} />
+      <Stack.Screen name="ForgetPassword" component={ForgetPassword} />
+      <Stack.Screen name="DetailsPage" component={DetailsPage} />
+      <Stack.Screen name="Homepage" component={NavDrawer} />
+      <Stack.Screen name="ConnectDevice" component={ConnectDevice} />
+      <Stack.Screen name="UpdateProfile" component={ProfileUpdate} />
+      <Stack.Screen name="UpdatePassword" component={UpdatePassword} />
+    </Stack.Navigator>
+  </TimerProvider>
+);
 
 export default function App() {
   return (

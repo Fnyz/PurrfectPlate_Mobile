@@ -1,4 +1,4 @@
-import { View, Text, ImageBackground, TouchableOpacity, ActivityIndicator ,Button, Linking } from 'react-native'
+import { View, Text, ImageBackground, TouchableOpacity, ActivityIndicator ,Button, Linking, Platform } from 'react-native'
 import React, { useEffect, useRef } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { MaterialIcons } from '@expo/vector-icons';
@@ -15,7 +15,9 @@ import app from './firebase';
 import { getFirestore, collection, addDoc, query, where, onSnapshot, getDocs,updateDoc, doc, deleteDoc, setDoc } from 'firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useState } from 'react';
-import { useTimer } from './TimeContext';
+import { useTimer } from './GlobalContext';
+
+
 const db = getFirestore(app);
 
 
@@ -40,11 +42,8 @@ const Live = ({navigation}) => {
   const [qouta, setqoutaWarning] = useState(false);
   const [message2, setMessage2] = React.useState('Something went wrong, please click the bottom to request again to see the live video.');
   const isDrawerOpen = useDrawerStatus() === 'open';
-  const [showTimer, setShowTimer] = useState(false);
+  const { showTimer, setShowTimer,  remainingTime} = useTimer()
 
-
-
-  const { count, resetTimer } = useTimer();
 
   const formatTime = (timeInSeconds) => {
     const minutes = Math.floor(timeInSeconds / 60);
@@ -52,85 +51,86 @@ const Live = ({navigation}) => {
     return `${minutes < 10 ? '0' : ''}${minutes} mins ${seconds < 10 ? '0' : ''}${seconds} secs`;
   };
 
+ 
 
-  useEffect(() => {
-    console.log('Count in UI:', count);
-  
-    // Additional logic based on the count in the UI
-    if (count === 0) {
-      fetchLiveStreams(apiKey1, channel, liveiD)
-      setShowTimer(false);
+  useEffect(()=>{
+    const trackthis = async () => {
+      const storedStartTime = await AsyncStorage.getItem('startTime');
+
+      if (storedStartTime !== null) {
+        
+        if (remainingTime <= 0) {
+          fetchLiveStreams(apiKey1, channel, liveiD)
+        }
+      }
     }
-  
-  }, [count]);
-  
+    trackthis();
+   
+  },[])
+
 
   const handleOpenDrawer = () => {
     navigation.openDrawer();
   }
 
-  const handleRefetch =async () => {
-   setloading1(true)
-   
-    const apiUrl = `https://www.googleapis.com/youtube/v3/search?key=${apiKey1}&channelId=${channel}&eventType=live&type=video&part=snippet`;
-
-    fetch(apiUrl)
-      .then(response =>
-        {
-          if (!response.ok) {
-            const docRef = doc(db, 'Livestream', liveiD);
-              updateDoc(docRef, {
-                isliveNow: false,
-                ended:true,
-      
-              }).then(() => {
-                setMessage2("Video quota exceeded!, Please contact adminstrator!");
-                setloading(false);
-                setqoutaWarning(true)
-                setVisible1(true);
-              });
-            return;
-          }
-          response.json()
-        }
-        )
-      .then(data => {
-        console.log('API Response:', data); // Log the entire API response
-        const liveVideo = data.items && data.items[0]; // Check if items array exists
-        if(!data.items.length){
-          setVisible(false);
-          setloading1(false)
+  const handleRefetch = async () => {
+    setloading1(true);
+  
+    const apiUrl = `https://www.googleapis.com/youtube/v3/search?key=${apiKey1}&channelId=${channel}&eventType=live&type=video&part=snippet,id`;
+  
+    try {
+      const response = await fetch(apiUrl);
+  
+      if (!response.ok) {
+        const docRef = doc(db, 'Livestream', liveiD);
+        updateDoc(docRef, {
+          isliveNow: false,
+          ended: true,
+        }).then(() => {
+          setMessage2("Video quota exceeded! Please contact the administrator!");
+          setloading(false);
+          setqoutaWarning(true);
           setVisible1(true);
-          setloading1(false)
-          return;
-        }
-
-        if (liveVideo) {
-          const videoId = liveVideo.id.videoId;
-          const url = `https://www.youtube.com/watch?v=${videoId}`;
-            const docRef = doc(db, 'Livestream', liveiD);
-            updateDoc(docRef, {
-              Youtube_Url:url,
-           }).then(()=>{
-            setYoutubeId(videoId);
-            setVisible(false);
-            setVisible1(false);
-            setloading(false);
-            setloading1(false)
-             console.log("Updated Database");
-           });
-      // // You can use the video IDs for further processing
-        } else {
-    
-        
-
-        }
-      })
-      .catch(error => {
-        console.log('Error fetching live stream data:', error);
-      });
-
-  }
+        });
+        return;
+      }
+  
+      const data = await response.json();
+  
+      console.log('API Response:', data); // Log the entire API response
+      const liveVideo = data.items && data.items[0]; // Check if items array exists
+      if (!data.items.length) {
+        setVisible(false);
+        setloading1(false);
+        setVisible1(true);
+        setloading1(false);
+        return;
+      }
+  
+      if (liveVideo) {
+        const videoId = liveVideo.id.videoId;
+        const url = `https://www.youtube.com/watch?v=${videoId}`;
+        const docRef = doc(db, 'Livestream', liveiD);
+        updateDoc(docRef, {
+          Youtube_Url: url,
+        }).then(() => {
+          setYoutubeId(videoId);
+          setVisible(false);
+          setVisible1(false);
+          setloading(false);
+          setloading1(false);
+          console.log("Updated Database");
+        });
+        // // You can use the video IDs for further processing
+      } else {
+        // Handle the case when liveVideo is falsy
+      }
+    } catch (error) {
+      console.log('Error fetching live stream data:', error);
+      setloading1(false);
+    }
+  };
+  
   
  
 
@@ -139,51 +139,46 @@ const Live = ({navigation}) => {
 
 
   const fetchLiveStreams = async (apiKey, channelId, id) => {
-
-    setApiKey(apiKey);
-    setChannel(channelId);
-    setLiveId(id);
-  
-    
    
+    setVisible(false);
+  
     // Step 1: Get live broadcasts associated with the channel
-const apiUrl = `https://www.googleapis.com/youtube/v3/search?key=${apiKey}&channelId=${channelId}&eventType=live&type=video&part=snippet`;
-
-fetch(apiUrl)
-  .then(response => {
-    if (!response.ok) {
-      const docRef = doc(db, 'Livestream', id);
+    const apiUrl = `https://www.googleapis.com/youtube/v3/search?key=${apiKey}&channelId=${channelId}&eventType=live&type=video&part=snippet,id`;
+  
+    try {
+      const response = await fetch(apiUrl);
+  
+      if (!response.ok) {
+        const docRef = doc(db, 'Livestream', id);
         updateDoc(docRef, {
           isliveNow: false,
-          ended:true,
-
+          ended: true,
         }).then(() => {
-          setMessage2("Video quota exceeded!, Please contact adminstrator!");
+          setMessage2("Video quota exceeded! Please contact the administrator!");
           setloading(false);
-          setqoutaWarning(true)
+          setqoutaWarning(true);
           setVisible1(true);
         });
-      return;
-    }
-    return response.json();
-  })
-  .then(data => {
-    console.log('API Response:', data); // Log the entire API response
-    const liveVideo = data?.items && data?.items[0]; // Check if items array exists
-
-
-
-    if (!data.items.length) {
-      setVisible(false);
-      setVisible1(true);
-      setloading1(false);
-      return;
-    }
-
-
-    if (liveVideo) {
-      const videoId = liveVideo.id.videoId;
-      const url = `https://www.youtube.com/watch?v=${videoId}`;
+        return;
+      }
+  
+      const data = await response.json();
+  
+      console.log('API Response:', data); // Log the entire API response
+  
+      if (!data.items.length) {
+        setShowTimer(false);
+        setVisible(false);
+        setVisible1(true);
+        setloading1(false);
+        return;
+      }
+  
+      const liveVideo = data.items[0]; // Check if items array exists
+      if (liveVideo) {
+        setShowTimer(false);
+        const videoId = liveVideo.id.videoId;
+        const url = `https://www.youtube.com/watch?v=${videoId}`;
         const docRef = doc(db, 'Livestream', id);
         updateDoc(docRef, {
           Youtube_Url: url,
@@ -194,24 +189,16 @@ fetch(apiUrl)
           setVisible1(false);
           console.log("Updated Database");
         });
-
-      // // You can use the video IDs for further processing
-    } else {
-      // Handle case when there are no live videos
+  
+        // You can use the video IDs for further processing
+      }
+    } catch (error) {
+      console.log('Error fetching live stream data:', error);
+      setVisible1(true);
+      setVisible(false);
     }
-  })
-  .catch(error => {
-    console.log('Error fetching live stream data:', error);
-    if (error.message.includes('quota')) {
-      // Handle quota exceeded error here
-      // For example, notify the user or implement a retry mechanism after some time
-      // You might want to set a flag or display an error message to the user
-    }
-    setVisible(false);
-  });
-
   };
-
+  
 
 
   useEffect(()=> {
@@ -231,11 +218,30 @@ fetch(apiUrl)
   useEffect(()=> {
     const q = query(collection(db, "Livestream"), where("DeviceName", "==", deviceName));
     onSnapshot(q, (snapshot) => {
-  snapshot.docChanges().forEach((change) => {
+  snapshot.docChanges().forEach(async(change) => {
     setLiveId(change.doc.id)
     if (change.type == "modified" && change.doc.data().isliveNow) {
         setMessage('Please wait for a minute, proccessing youtube url.');
-        fetchLiveStreams(change.doc.data().ApiKey,change.doc.data().ChannelID, change.doc.id);
+          const startTime = Date.now();
+          await AsyncStorage.setItem('startTime', startTime.toString());
+          const storeData = async (value) => {
+            try {
+              setTimeout(() => {
+                setShowTimer(true);
+                setApiKey(change.doc.data().ApiKey)
+                setChannel(change.doc.data().ChannelID)
+                setLiveId(change.doc.id)
+                setVisible(false);
+              }, 5000);
+            } catch (e) {
+              // saving error
+            }
+          };
+          storeData();
+          
+          
+          
+     
        
     }
    
@@ -291,8 +297,10 @@ fetch(apiUrl)
   };
 
   useEffect(()=>{
-  
-    setVisible(true);
+    if(!showTimer){
+      setVisible(true);
+    }
+    
 
     handleShowCredData();
    },[])
@@ -327,7 +335,7 @@ fetch(apiUrl)
       //    request:'Start',
       //  });
       //  console.log('Sending request to live video!');
-       setloading(true);
+      //  setloading(true);
       })
 
 
@@ -351,11 +359,11 @@ fetch(apiUrl)
 
   useEffect(()=> {
 
+   
 
   const getData = async () => {
 
     try {
-      setVisible(true);
    
       const jsonValue = await AsyncStorage.getItem('Credentials');
       const credential = JSON.parse(jsonValue);
@@ -369,27 +377,34 @@ fetch(apiUrl)
      snapshot.docChanges().forEach((change) => {
       const {DeviceName,Youtube_Url, isliveNow, ApiKey, ChannelID, ended} = change.doc.data()
 
+      
+      if(DeviceName == credential.DeviceName.trim() && isliveNow == true && !Youtube_Url && !ended){
+        setloading(true);
+        setVisible(false);
+        setMessage('Please wait for a minute, proccessing youtube url.');
+        if(remainingTime !== 0){
+          setShowTimer(true);
+        }
+        
+        setApiKey(ApiKey)
+        setChannel(ChannelID)
+        setLiveId(change.doc.id)
+        
+        return;
+      }
+
       if(DeviceName == credential.DeviceName.trim()  && !Youtube_Url && !isliveNow && !ended){
         setloading(true);
         setMessage('Please wait a minute to see the live?');
         return;
       }
 
-      if(DeviceName == credential.DeviceName.trim() && isliveNow == true && !Youtube_Url && !ended){
-        setMessage('Please wait for a minute, proccessing youtube url.');
-        setShowTimer(true);
-        setApiKey(ApiKey)
-        setChannel(ChannelID)
-        setLiveId(change.doc.id)
-        setloading(false);
-        return;
-      }
  
  
       if(DeviceName == credential.DeviceName.trim() && isliveNow == true && Youtube_Url){
         setMessage('Do you want to continue watching the live?');
         setPrompt(true);
-
+        setShowTimer(false);
         return;
       }
   
@@ -830,6 +845,8 @@ fetch(apiUrl)
                 borderWidth:1,
                 borderColor:'#FAB1A0'
               }} onPress={()=>{
+               
+                setShowTimer(false);
                 if(!load){
                   navigation.replace('Homepage',
                   {
@@ -852,7 +869,10 @@ fetch(apiUrl)
                     isliveNow: false,
                     ended:true,
           
-                  }).then(() => {
+                  }).then(async() => {
+                    console.log("here")
+                 
+                    await AsyncStorage.removeItem('startTime');
                     setCancel(false);
                     setVisible(false);
                     setVisible1(false);
@@ -867,7 +887,7 @@ fetch(apiUrl)
                 
             
                
-              }}>
+              }} disabled={cancel}>
 
 {load && (
 <View>
@@ -925,7 +945,7 @@ fetch(apiUrl)
           <View style={{
             width:'100%',
             backgroundColor:'white', 
-            height:'43%',
+            height:qouta ? '38%': '43%',
             alignItems:'center',
             borderRadius:10,
           }}>
@@ -957,8 +977,7 @@ fetch(apiUrl)
             }}>
            {!qouta && (
             <TouchableOpacity style={{
-                
-              width:'100%',
+              width:'99%',
               height:40,
               justifyContent:'center',
               alignItems:'center',
@@ -988,7 +1007,7 @@ fetch(apiUrl)
             color:'white',
             fontWeight:'bold',
             fontSize:18,
-          }}>Request</Text>
+          }}>REQUEST</Text>
           }
             
             </TouchableOpacity>
@@ -1004,6 +1023,7 @@ fetch(apiUrl)
                 paddingHorizontal:6,
                 marginLeft:2,
               }}>
+              {!qouta && (
               <TouchableOpacity style={{
                 
                 width: !qouta? '40%': '50%',
@@ -1014,8 +1034,9 @@ fetch(apiUrl)
                 backgroundColor:'white',
                 borderWidth:1,
                 borderColor:'#FAB1A0',
-              }} onPress={()=>{
-
+              }} onPress={async()=>{
+                await AsyncStorage.removeItem('startTime');
+                setShowTimer(false);
                 setCancel(true);
                 setloading1(false);
                 addDoc(collection(db, "Task"),{
@@ -1029,7 +1050,8 @@ fetch(apiUrl)
                     isliveNow: false,
                     ended:true,
           
-                  }).then(() => {
+                  }).then(async() => {
+                  
                     setCancel(false);
                     setVisible(false);
                     setVisible1(false);
@@ -1042,13 +1064,8 @@ fetch(apiUrl)
                   });
                 });
 
-                navigation.replace('Homepage',
-                {
-                 screen: 'Dashboard',
-                 params: {credentials: userData },
-               }
-               );
-              }}>
+               
+              }} disabled={cancel}>
                
                  
                {cancel ? (
@@ -1082,23 +1099,45 @@ fetch(apiUrl)
             
               </TouchableOpacity>
 
+              )}
+
 
               <TouchableOpacity style={{
                 
-                width: !qouta? '60%': '50%',
+                width: !qouta? '60%': '100%',
                 height:40,
                 justifyContent:'center',
                 alignItems:'center',
                 backgroundColor:'white',
                 borderWidth:1,
-                borderBottomRightRadius:10,
+                borderBottomRightRadius:qouta ? 0:10,
                 borderColor:'#FAB1A0',
               }} onPress={()=>{
-                navigation.replace('Homepage',
-                {
-                 screen: 'Dashboard',
-                 params: {credentials: userData },
-               });
+                setShowTimer(false);
+                addDoc(collection(db, "Task"),{
+                  type:'Livestream',  
+                  deviceName:credential.DeviceName.trim(),
+                  document_id: liveiD,
+                  request:'Stop',
+                }).then(()=>{
+                  const docRef = doc(db, 'Livestream', liveiD);
+                  updateDoc(docRef, {
+                    isliveNow: false,
+                    ended:true,
+          
+                  }).then(async() => {
+                    await AsyncStorage.removeItem('startTime');
+                    setCancel(false);
+                    setVisible(false);
+                    setVisible1(false);
+                    navigation.replace('Homepage',
+                    {
+                     screen: 'Dashboard',
+                     params: {credentials: userData },
+                   }
+                   );
+                  });
+                });
               }}>
                
                  
@@ -1168,7 +1207,9 @@ fetch(apiUrl)
                 borderTopLeftRadius:10,
                 borderBottomLeftRadius:10,
                 backgroundColor:'#FAB1A0'
-              }} onPress={()=>{
+              }} onPress={async()=>{
+                console.log("just press");
+                await AsyncStorage.removeItem('startTime');
                 addDoc(collection(db, "Task"),{
                   type:'Livestream',  
                   deviceName:credential.DeviceName.trim(),
@@ -1272,18 +1313,92 @@ fetch(apiUrl)
                  <View>
 
      
-      <Text style={{ fontSize: 15, marginTop:10, fontWeight:'bold'}}>Time Remaining: <Text style={{
+      <Text style={{ fontSize: 15, marginTop:10, fontWeight:'bold', textAlign:'center'}}>Time Remaining: <Text style={{
         color:'red',
-      }}>{formatTime(count)}.</Text></Text>
+      }}>{formatTime(remainingTime)}.</Text></Text>
+
+      <View style={{flexDirection:'row', justifyContent:'center', alignItems:'center', gap:5, marginTop:15,}}>
+
       <TouchableOpacity style={{
+                width: '45%',
                 height:40,
-                marginTop:20,
                 justifyContent:'center',
                 alignItems:'center',
                 backgroundColor:'white',
-   
+                borderWidth:1,
+                borderRadius:5,
+                borderColor:'#FAB1A0',
+              }} onPress={ async()=>{
+                console.log("heyhey");
+                setShowTimer(false);
+                await AsyncStorage.removeItem('startTime');
+                setCancel(true);
+                setloading1(false);
+                addDoc(collection(db, "Task"),{
+                  type:'Livestream',  
+                  deviceName:credential.DeviceName.trim(),
+                  document_id: liveiD,
+                  request:'Stop',
+                }).then(()=>{
+                  const docRef = doc(db, 'Livestream', liveiD);
+                  updateDoc(docRef, {
+                    isliveNow: false,
+                    ended:true,
+                  }).then(() => {
+                  
+                    setCancel(false);
+                    setVisible(false);
+                    setVisible1(false);
+                    navigation.replace('Homepage',
+                    {
+                     screen: 'Dashboard',
+                     params: {credentials: userData },
+                   }
+                   );
+                  });
+                });
+
+              }} disabled={cancel}>
+               
+                 
+               {cancel ? (
+  <View style={{
+    flexDirection:'row',
+    justifyContent:'center',
+    alignItems:'center',
+    gap:5
+  }}>
+<ActivityIndicator animating={true} color='#FAB1A0' size={20} style={{
+              opacity:0.8,
+              position:'relative',
+              left:0,
+            }}/> 
+    <Text style={{
+      color:'#FAB1A0',
+      fontWeight:'bold',  
+      fontSize:15,
+      fontStyle:'italic'
+    }}>Wait</Text>
+  </View>
+):(
+<Text style={{
+  color:'#FAB1A0',
+  fontWeight:'bold',
+  fontSize:15,
+  fontStyle:'italic'
+}}>CANCEL</Text>
+
+)}
+            
+              </TouchableOpacity>
+      <TouchableOpacity style={{
+                height:40,
+                width:'50%',
+                padding:10,
+                borderRadius:5,
+                justifyContent:'center',
+                alignItems:'center',
                 backgroundColor:'#FAB1A0',
-                borderRadius:10,
               }} onPress={()=>{
                 navigation.replace('Homepage',
                 {
@@ -1301,14 +1416,19 @@ fetch(apiUrl)
 
             
               </TouchableOpacity>
+      </View>
            
     </View>
           </View>
         
       </Modal>
+
+     
       </ImageBackground>
     </SafeAreaView>
   )
 }
 
 export default Live
+
+

@@ -6,19 +6,23 @@
         {
           "photosPermission": "The app accesses your photos to let you share them with your friends."
         }
-        
+      ],[
+        "expo-notifications",
+        {
+          "icon": "./assets/LogoIconApp.png",
+          "color": "#ffffff"
+        }
       ]
-
     ],
-    "name": "purrfectPlate",
-    "slug": "purrfectPlate",
+    "name": "purrfectplate",
+    "slug": "purrfectplate",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/LogoIconApp.png",
     "userInterfaceStyle": "light",
     "splash": {
-      "image": "./assets/splash.png",
-      "resizeMode": "contain",
+      "image": "./assets/PurrfectPlateViewLogo.png",
+      "resizeMode": "cover",
       "backgroundColor": "#ffffff"
     },
     "assetBundlePatterns": [
@@ -32,17 +36,23 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/LogoIconApp.png",
         "backgroundColor": "#ffffff"
       },
       "permissions": [
-        "RECORD_AUDIO",
-        "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE"
+        "android.permission.RECORD_AUDIO",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.RECORD_AUDIO"
       ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "2ef4b8d5-9825-48e7-b91b-eafadf758a7b"
+      }
     }
   }
 }

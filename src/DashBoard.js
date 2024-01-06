@@ -9,7 +9,7 @@ import NotificationList from './components/notificationList';
 import PetList from './components/PetList';
 import Swiper from 'react-native-swiper'
 import { useDrawerStatus } from '@react-navigation/drawer';
-import { doc,  getFirestore, collection, query, where, onSnapshot , orderBy} from "firebase/firestore";
+import { doc,  getFirestore, collection, query, where, onSnapshot , orderBy, updateDoc} from "firebase/firestore";
 import app from './firebase';
 import { FontAwesome } from '@expo/vector-icons';
 import { AntDesign } from '@expo/vector-icons';
@@ -21,6 +21,8 @@ import PurrfectPlateLoadingScreen from './components/PurrfectPlateLoadingScreen'
 import {useForm, Controller, set} from 'react-hook-form';
 import DropDownPicker from "react-native-dropdown-picker";
 import NotifComponent from './components/NotifComponent';
+import { useTimer } from './GlobalContext';
+import { AlertNotificationRoot } from 'react-native-alert-notification';
 
 
 
@@ -31,7 +33,7 @@ const auth = getAuth(app);
 
 
 const DashBoard = ({navigation,route: {params: { credentials }}}) => {
-
+  const { setCredentials } = useTimer();
   const [profile, setProfileData] = useState({});
   const [listOfPet, setListOfPet] = useState([]);
   const [listOfPet1, setListOfPet1] = useState([]);
@@ -46,106 +48,160 @@ const DashBoard = ({navigation,route: {params: { credentials }}}) => {
     { label: "", value: "" },
   ]);
 
-
   const [showNotif, setShowNotif] = useState(false)
   const [notif, setNotifications] = useState([]);
-  
+  const [notifAll, setNotificationsAll] = useState([]);
+
+
   useEffect(() => {
-    
-   
-    
-
-        const q = query(
-          collection(db, "notifications"),
-          where("deviceName", "==", credentials.DeviceName.trim()),
-          orderBy("createdAt", "desc")
-        );
-       
-          const notificationsData = [];
-        
-          const unsubscribe = onSnapshot(q, (querySnapshot) => {
-            querySnapshot.forEach((doc) => {
-              const type = doc.data().type;
-              const petName = doc.data().pet_name;
-              const createdAt = doc.data().createdAt.toDate(); 
-             
-              if (type === "Admin") {
-             
-        
-                const usersQuery = query(
-                  collection(db, "users"),
-                  where("username", "==", type)
-                );
-        
-                const userUnsubscribe = onSnapshot(usersQuery, (usersQuerySnapshot) => {
-                  usersQuerySnapshot.forEach((userDoc) => {
-                    notificationsData.push({
-                      name: userDoc.data().username,
-                      weight: null,
-                      message: doc.data().Messages,
-                      image: userDoc.data().image,
-                      createdAt
-                    });
-                    notificationsData.sort((a, b) => b.createdAt - a.createdAt);
-                    setNotifications([...notificationsData]); // Update state with new data
-                    
-                    // Save data in localStorage
-                   AsyncStorage.setItem("notifications", JSON.stringify(notificationsData));
-                  });
-                });
-              }
-        
-             if(type === "User"){
-              const listOfPetsQuery = query(
-                collection(db, "List_of_Pets"),
-                where("DeviceName", "==", credentials.DeviceName.trim()),
-                where("Petname", "==", petName || null)
-              );
-        
-              const petUnsubscribe = onSnapshot(listOfPetsQuery, (petsQuerySnapshot) => {
-                petsQuerySnapshot.forEach((petDoc) => {
-                  notificationsData.push({
-                    name: petDoc.data().Petname,
-                    weight: petDoc.data().Weight,
-                    message: doc.data().Messages, 
-                    image: petDoc.data().image,
-                    createdAt
-                  });
-                  notificationsData.sort((a, b) => b.createdAt - a.createdAt);
-                  setNotifications([...notificationsData]); // Update state with new data
-
-                  
-                  // Save data in localStorage
-                AsyncStorage.setItem("notifications", JSON.stringify(notificationsData));
-                });
+    const q = query(
+      collection(db, "notifications"),
+      where("deviceName", "==", credentials.DeviceName.trim()),
+      where("type", "==", "User"),
+      where("hasSeen", "==", false),
+      orderBy("createdAt", "desc")
+    );
+  
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const newNotificationsData = new Map();
+  
+      querySnapshot.forEach((doc) => {
+        const petName = doc.data().pet_name;
+        const createdAt = doc.data()?.createdAt?.toDate();
+        const hasSeen = doc.data().hasSeen;
+  
+        if (!petName) {
+          const usersQuery = query(
+            collection(db, "users"),
+            where("username", "==", "Admin")
+          );
+  
+          onSnapshot(usersQuery, (usersQuerySnapshot) => {
+            usersQuerySnapshot.forEach((userDoc) => {
+              newNotificationsData.set(doc.id, {
+                name: userDoc.data().username,
+                weight: null,
+                deviceName:credentials.DeviceName.trim(),
+                message: doc.data().Messages,
+                image: userDoc.data().image,
+                hasSeen,
+                id: doc.id,
+                createdAt,
               });
-             }
-            
+            });
+  
+            // Update state
+            setNotifications([...newNotificationsData.values()]);
+            AsyncStorage.setItem("notifications", JSON.stringify([...newNotificationsData.values()]));
+          });
+        }
+  
+        const listOfPetsQuery = query(
+          collection(db, "List_of_Pets"),
+          where("DeviceName", "==", credentials.DeviceName.trim()),
+          where("Petname", "==", petName || null)
+        );
+  
+        onSnapshot(listOfPetsQuery, (petsQuerySnapshot) => {
+          petsQuerySnapshot.forEach((petDoc) => {
+            newNotificationsData.set(doc.id, {
+              name: petDoc.data().Petname,
+              weight: petDoc.data().Weight,
+              deviceName:credentials.DeviceName.trim(),
+              message: doc.data().Messages,
+              image: petDoc.data().image,
+              hasSeen,
+              id: doc.id,
+              createdAt,
             });
           });
-        
-          return unsubscribe;
-     
-
-        
-        
-
+          
+          // Update state
+          setNotifications([...newNotificationsData.values()]);
+          AsyncStorage.setItem("notifications", JSON.stringify([...newNotificationsData.values()]));
+        });
+      });
+    });
   
-    
-      
-    }, []);
+    return unsubscribe;
+  }, []);
+
+  useEffect(() => {
+    const q = query(
+      collection(db, "notifications"),
+      where("deviceName", "==", credentials.DeviceName.trim()),
+      where("type", "==", "User"),
+      where("hasSeen", "==", true),
+      orderBy("createdAt", "desc")
+    );
+  
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const newNotificationsData = new Map();
+  
+      querySnapshot.forEach((doc) => {
+        const petName = doc.data().pet_name;
+        const createdAt = doc.data()?.createdAt?.toDate();
+        const hasSeen = doc.data().hasSeen;
+  
+        if (!petName) {
+          const usersQuery = query(
+            collection(db, "users"),
+            where("username", "==", "Admin")
+          );
+  
+          onSnapshot(usersQuery, (usersQuerySnapshot) => {
+            usersQuerySnapshot.forEach((userDoc) => {
+              newNotificationsData.set(doc.id, {
+                name: userDoc.data().username,
+                weight: null,
+                deviceName:credentials.DeviceName.trim(),
+                message: doc.data().Messages,
+                image: userDoc.data().image,
+                hasSeen,
+                id: doc.id,
+                createdAt,
+              });
+            });
+  
+            // Update state
+            setNotificationsAll([...newNotificationsData.values()]);
+          
+          });
+        }
+  
+        const listOfPetsQuery = query(
+          collection(db, "List_of_Pets"),
+          where("DeviceName", "==", credentials.DeviceName.trim()),
+          where("Petname", "==", petName || null)
+        );
+  
+        onSnapshot(listOfPetsQuery, (petsQuerySnapshot) => {
+          petsQuerySnapshot.forEach((petDoc) => {
+            newNotificationsData.set(doc.id, {
+              name: petDoc.data().Petname,
+              weight: petDoc.data().Weight,
+              deviceName:credentials.DeviceName.trim(),
+              message: doc.data().Messages,
+              image: petDoc.data().image,
+              hasSeen,
+              id: doc.id,
+              createdAt,
+            });
+          });
+          
+          // Update state
+          setNotificationsAll([...newNotificationsData.values()]);
+        
+        });
+      });
+    });
+  
+    return unsubscribe;
+  }, []);
 
 
  
 
-    useEffect(() => {
-      AsyncStorage.getItem("notifications").then((storedNotifications)=>{
-        if (storedNotifications) {
-          const parsedNotifications = JSON.parse(storedNotifications);
-          setNotifications(parsedNotifications);
-        }
-      });
-    }, []);
     
   
   
@@ -159,8 +215,40 @@ const DashBoard = ({navigation,route: {params: { credentials }}}) => {
 
 
 
+  const handleSeeAllNotification = () => {
+    
+    if(notif.length){
+ const updateNotifications = async (notif) => {
+  try {
+    const updatePromises = notif.map(a => {
+      const docRef = doc(db, 'notifications', a.id);
 
+      // Update the document with the new data
+      return updateDoc(docRef, { hasSeen: true })
+        .then(() => {
+          console.log(`Document updated successfully: ${a.id}`);
+        })
+        .catch((error) => {
+          console.error(`Error updating document: ${a.id}`, error);
+        });
+    });
 
+    // Wait for all promises to resolve
+    await Promise.all(updatePromises);
+  } catch (error) {
+    console.error('Error updating documents:', error);
+  }
+};
+
+updateNotifications(notif);
+
+    }
+  
+  setNotifications([]);
+   
+    setShowNotif(true);
+
+  }
   getUserProfile = async () => {
 
     onSnapshot(doc(db, "users", credentials.userId), (doc) => {
@@ -174,6 +262,7 @@ const DashBoard = ({navigation,route: {params: { credentials }}}) => {
       navigation.replace('LoginSignUp',{
         change:false
       } )
+      setCredentials({});
     }).catch((error) => {
       console.log('there was an error');
     });
@@ -189,7 +278,9 @@ const DashBoard = ({navigation,route: {params: { credentials }}}) => {
   useEffect(()=> {
     const getPettypes = async () => {
       const user = await AsyncStorage.getItem("Credentials");
+     
       const datas = JSON.parse(user);
+      setCredentials(datas);
       if(user){
         const q = query(collection(db, "List_of_Pets"), where("DeviceName", "==", datas?.DeviceName.trim()));
         onSnapshot(q, (querySnapshot) => {
@@ -301,11 +392,11 @@ const DashBoard = ({navigation,route: {params: { credentials }}}) => {
  
 
 
-  // if(loading){
-  //   return (
-  //     <PurrfectPlateLoadingScreen message={"WELCOME TO PURRFECT PLATE"} fontSize={20} />
-  //   )
-  // }
+  if(loading){
+    return (
+      <PurrfectPlateLoadingScreen message={"WELCOME TO PURRFECT PLATE"} fontSize={20} />
+    )
+  }
 
 
 
@@ -315,6 +406,8 @@ const DashBoard = ({navigation,route: {params: { credentials }}}) => {
 
 
   return (
+    <AlertNotificationRoot theme='dark'>
+
     <SafeAreaView style={{
       flex:1,
       position:'relative'
@@ -630,7 +723,7 @@ const DashBoard = ({navigation,route: {params: { credentials }}}) => {
       }}>
         Notification
       </Text>
-      <TouchableOpacity onPress={()=> setShowNotif(true)}>
+      <TouchableOpacity onPress={()=> handleSeeAllNotification()}>
       <Text style={{
         opacity:0.5
       }} >See all</Text>
@@ -642,7 +735,28 @@ const DashBoard = ({navigation,route: {params: { credentials }}}) => {
         height:230,
     }}>
        
-
+        {!notif.length ? (
+          <View style={{
+            justifyContent:'center',
+            alignItems:'center',
+            marginTop:10,
+          }}>
+             <Image
+        style={{
+          width:150,
+          height:150,
+          opacity:0.9,
+        }}
+        source={require('../assets/Doggy1.png')}
+        contentFit="cover"
+        transition={1000}
+      />
+            <Text style={{
+              fontWeight:'bold',
+              fontSize:15,
+            }}>No notification found!</Text>
+          </View>
+        ): (
          <Swiper 
           autoplay 
           loop
@@ -702,6 +816,7 @@ const DashBoard = ({navigation,route: {params: { credentials }}}) => {
          })}
          
   </Swiper>
+        )}
    
     </View>
 
@@ -803,7 +918,7 @@ const DashBoard = ({navigation,route: {params: { credentials }}}) => {
             color:'coral',
             fontSize:25,
             fontWeight:'bold'
-          }}>|</Text> List of Notification</Text>
+          }}>|</Text> List of Pets</Text>
           <TouchableOpacity onPress={()=> setVisible(false)}>
           <AntDesign name="close" size={24} color="red" />    
           </TouchableOpacity>
@@ -846,12 +961,15 @@ const DashBoard = ({navigation,route: {params: { credentials }}}) => {
             fontSize:25,
             fontWeight:'bold'
           }}>|</Text> List of Notifications</Text>
-          <TouchableOpacity onPress={()=> setShowNotif(false)}>
+          <TouchableOpacity onPress={()=> {
+            setShowNotif(false);
+            setNotifications([]);
+          }}>
           <AntDesign name="close" size={24} color="red" />    
           </TouchableOpacity>
           </View>
           <FlatList
-        data={notif}
+        data={notifAll}
         renderItem={({item})=> {
            return (
             <NotifComponent {...item} navigation={navigation} setVisible={setVisible}/>
@@ -868,6 +986,8 @@ const DashBoard = ({navigation,route: {params: { credentials }}}) => {
         </View>
        </Modal>
     </SafeAreaView>
+    
+    </AlertNotificationRoot>
   )
 }
 

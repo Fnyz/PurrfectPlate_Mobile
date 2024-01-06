@@ -21,10 +21,7 @@ import { petsData } from '../animeData';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import PurrfectPlateLoadingScreen from './components/PurrfectPlateLoadingScreen';
 import { Audio } from 'expo-av';
-import { Divider } from 'react-native-paper';
-import * as Permissions from 'expo-permissions';
 import * as FileSystem from 'expo-file-system';
-import AudioRecorded from './components/AudioRecorded';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import moment from 'moment';
 const Box = React.memo(({Cat, Dog, image, handleCloseModal, pickImage, handlePickImage, click, handleSave}) => {
@@ -340,19 +337,12 @@ if (selectedEnd !== undefined) {
           const q = query(collection(db, "List_of_Pets"), where("DeviceName", "==", datas.DeviceName));
           onSnapshot(q, (snapshot) => {
           snapshot.docChanges().forEach((change) => {
-           if (change.doc.data().Weight && change.doc.data().Petname === petName && change.doc.data().Token === 0) {
+           if (change.type === "modified" && change.doc.data().Weight && change.doc.data().Token === 0) {
             setWeight(change.doc.data().Weight)
             setLoad2(false)
-  
             return;
           }
-          if (change.doc.data().Rfid && change.doc.data().Petname === petName && change.doc.data().Token === 0) {
-            setRfid(change.doc.data().Rfid)
-            setLoad1(false)
-  
-            return;
-          }
-  
+
         });
       
       });
@@ -363,7 +353,53 @@ if (selectedEnd !== undefined) {
 
     makeChange();
    
-},[loadingRf, loadingWth])
+},[loadingWth, Weight])
+
+useEffect(()=> {
+  const makeChange = async () => {
+    const user = await AsyncStorage.getItem("Credentials")
+    if(user){
+        const datas1 = JSON.parse(user);
+        const q = query(collection(db, "List_of_Pets"), where("DeviceName", "==", datas1.DeviceName));
+        onSnapshot(q, (snapshot) => {
+        snapshot.docChanges().forEach((change) => {
+
+        if (change.type === "modified" && change.doc.data().Rfid && change.doc.data().Token === 0) {
+        
+
+          const a = datas.find(d => d?.Rfid == change.doc.data().Rfid && d.Petname.trim() !== change.doc.data().Petname.trim());      
+          if(!a){
+        
+            setRfid(change.doc.data().Rfid)
+            setLoad1(false)
+            return;
+          }
+          
+  
+           
+         
+              setRfid("")
+              Dialog.show({
+                type: ALERT_TYPE.SUCCESS,
+                title: 'SUCCESS',
+                textBody: `RFID is already taken on pet ${a?.Petname}; please try to generate a new RFID.`,
+                button: 'close',
+              })
+              setLoad1(false)
+          return;
+        }
+
+      });
+    
+    });
+
+
+    }
+  }
+
+  makeChange();
+ 
+},[loadingRf, Rfid])
   
   
 
@@ -414,6 +450,7 @@ if (selectedEnd !== undefined) {
     const petRrfid = doc(db, "List_of_Pets", petId);
       await updateDoc(petRrfid, {
         requestRfid: true,
+        Rfid:"",
       }).then( async()=>{
         setLoad1(true);
         await  addDoc(collection(db, "Task"), {
@@ -431,6 +468,7 @@ if (selectedEnd !== undefined) {
     const petWeightss = doc(db, "List_of_Pets", petId);
       await updateDoc(petWeightss, {
         requestWeight: true,
+        Weight:"",
       }).then(async()=>{
         setLoad2(true);
         await  addDoc(collection(db, "Task"), {
@@ -613,6 +651,7 @@ if (selectedEnd !== undefined) {
 
 
   async function startRecording() {
+    setSound('');
     try {
       console.log('Requesting permissions..');
       await Audio.requestPermissionsAsync();
@@ -690,7 +729,7 @@ if (selectedEnd !== undefined) {
     if (status.didJustFinish) {
       // The playback has finished
       setPlay(false);
-      setSound('');
+   
       console.log('Playback finished');
    
     }
@@ -789,6 +828,7 @@ if (selectedEnd !== undefined) {
   
     
     }}>
+
     <TextInput
       label="Pet name"
       mode='outlined'
@@ -1004,6 +1044,7 @@ if (selectedEnd !== undefined) {
           fontWeight:'bold'
         }}>Go back</Text>
       </TouchableOpacity>
+
       <TouchableOpacity style={{
         
         width:'45%',

@@ -115,16 +115,13 @@ const Reports = ({navigation}) => {
 
     
     const notification = {
-      User:data.email,
+      pet_name:null,
       Messages: `${userName} is send you a message please check it to chat.`,
-      image: userImage,
+      deviceName:deviceName.trim(),
       createdAt: serverTimestamp(),
-      type:"User",
+      type:"Admin",
       hasSeen:false,
     }
-
-
-
 
 
     const message = {
@@ -149,7 +146,7 @@ const Reports = ({navigation}) => {
         setSendLoading(false)
         setSendMessage('')
         if(docs.id){
-          addDoc(collection(db, "Notifications"),notification)
+          addDoc(collection(db, "notifications"),notification)
         }
       });
 
